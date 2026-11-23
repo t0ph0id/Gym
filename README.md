@@ -9,13 +9,15 @@ and both log weights and reps, your own or each other's. Everything syncs live b
     exercises) live in `com.gym.app.state`.
   - `androidApp`: the thin Android app with MainActivity, Google sign-in, the photo picker, the rest
     alarm and notifications, the manifest, resources, `google-services.json` and the release settings.
-  - `composeApp/src/iosMain`: the few iPhone-specific bits (secure random numbers, no wallpaper
-    colours). The shared code already compiles for iPhone (`iosArm64`, `iosSimulatorArm64`) into a
-    `ComposeApp` framework, so an Xcode app only has to wrap it, like `androidApp` does on Android.
-    Check it still compiles with `./gradlew :composeApp:compileKotlinIosSimulatorArm64`.
+  - `composeApp/src/iosMain`: the iPhone versions of the platform bits (`IosAppPlatform`: photo picker
+    and camera, the "Rest over" notification, share sheet, settings, keep-awake, haptics) and
+    `MainViewController`, which the Xcode app shows.
+  - `iosApp`: the thin iPhone app (SwiftUI). It starts Firebase, does Google sign-in with the
+    GoogleSignIn SDK (`GoogleSignInBridge.swift`) and wraps the shared UI. Firebase and GoogleSignIn
+    come from Swift Package Manager; an Xcode build phase builds the Kotlin `ComposeApp` framework.
 - **Sync:** Firebase Firestore through the [GitLive Firebase Kotlin SDK](https://github.com/GitLiveApp/firebase-kotlin-sdk).
   It updates live and works offline. Changes made with no signal upload when you're back online.
-- **Accounts:** Sign in with Google through Android's Credential Manager and Firebase Auth. Your pair
+- **Accounts:** Sign in with Google (Android's Credential Manager, or the GoogleSignIn SDK on iPhone) and Firebase Auth. Your pair
   and history follow your Google account to a new phone. The two of you pair up with a
   6-character code.
 
@@ -184,6 +186,23 @@ Open the `Gym` folder in Android Studio and run `androidApp`, or from a terminal
 ./gradlew :androidApp:installDebug
 ```
 
+### iPhone
+
+The iPhone app needs `iosApp/iosApp/GoogleService-Info.plist`: in the Firebase console, add an iOS app
+with bundle ID `com.t0ph0id.gym` and download the file (it's not in git). Without it the app shows
+setup instructions. The build copies it in and registers Google sign-in's return URL from it.
+
+Open `iosApp/iosApp.xcodeproj` in Xcode, pick your team under Signing & Capabilities, choose the
+iPhone or a simulator, and press Run. From a terminal (simulator, no signing):
+
+```bash
+xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 17' -derivedDataPath iosApp/build/dd CODE_SIGNING_ALLOWED=NO build
+```
+
+With a free Apple ID the app on the phone expires after 7 days; plug the phone in and Run again.
+Sharing a link into the app (as on Android) isn't there yet on iPhone: it needs a share extension.
+Use "Add link" on the Recipes tab instead.
+
 To test live sync on one machine, run two emulators, or one emulator and your phone.
 Pair them, start a workout, and type on one screen.
 
@@ -208,7 +227,7 @@ Each set is its own document, so both of you can edit at the same time without o
 
 ## Later
 
-- iPhone: add `iosArm64()` and `iosSimulatorArm64()` targets, an Xcode wrapper project, and the Firebase
-  iOS SDK. Also add an iOS `GoogleAuth` implementation using the GoogleSignIn SDK.
+- iPhone: a share extension so recipe links can be shared into the app, and a live countdown on the
+  lock screen during rests.
 - The final app name, which also means picking a real `applicationId` before publishing. Changing it
   needs a new Android app entry in Firebase.

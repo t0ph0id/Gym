@@ -23,7 +23,7 @@ class AndroidGoogleAuth(private val activity: ComponentActivity) : GoogleAuth {
         return if (id == 0) null else activity.getString(id)
     }
 
-    override suspend fun idToken(): String? {
+    override suspend fun signIn(): GoogleTokens? {
         val clientId = webClientId() ?: throw UserFacingException(
             "Google sign-in isn't configured. Enable Google in Firebase Authentication, " +
                 "then download google-services.json again."
@@ -36,7 +36,7 @@ class AndroidGoogleAuth(private val activity: ComponentActivity) : GoogleAuth {
             if (credential is CustomCredential &&
                 credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
             ) {
-                GoogleIdTokenCredential.createFrom(credential.data).idToken
+                GoogleTokens(GoogleIdTokenCredential.createFrom(credential.data).idToken)
             } else {
                 throw UserFacingException("Google sign-in didn't work. Please try again.")
             }

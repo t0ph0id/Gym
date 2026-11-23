@@ -76,8 +76,8 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
     // ---- sign-in ----
 
     fun signInWithGoogle(googleAuth: GoogleAuth) = busyTask {
-        val token = googleAuth.idToken() ?: return@busyTask // user backed out of the picker
-        repo.signInWithGoogle(token)
+        val tokens = googleAuth.signIn() ?: return@busyTask // user backed out of the picker
+        repo.signInWithGoogle(tokens)
     }
 
     fun signOut(googleAuth: GoogleAuth, platform: AppPlatform) {

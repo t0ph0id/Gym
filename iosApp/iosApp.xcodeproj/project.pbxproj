@@ -1,0 +1,355 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		DB3EA7D6A9D2D6CA7CFF686B /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35CD3188BE63955685216763 /* iOSApp.swift */; };
+		DD2AE4B7AD93F762746C91E8 /* GoogleSignInBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC1904C13D77422EC790242 /* GoogleSignInBridge.swift */; };
+		D0317420F376B6D550DD3011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9C951E0F6049D00803F4AB93 /* Assets.xcassets */; };
+		63A4709993AEE0C127F634AB /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 42A17EB741CF291FBBE55653 /* FirebaseAuth */; };
+		6D9D159709E15A4A8275CBC8 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = E7D98614934D969A7697EE00 /* FirebaseFirestore */; };
+		CA4CA31CBCF92AB43761AE41 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = DF9E8AC45D159DBB090718EF /* GoogleSignIn */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		D2A57DC1D883FD21FB995169 /* Gym.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Gym.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		35CD3188BE63955685216763 /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
+		6AC1904C13D77422EC790242 /* GoogleSignInBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleSignInBridge.swift; sourceTree = "<group>"; };
+		9C951E0F6049D00803F4AB93 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		E7492242B9B4886C92A608A5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1AE019FD444C28C0FB4AD06F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				63A4709993AEE0C127F634AB /* FirebaseAuth in Frameworks */,
+				6D9D159709E15A4A8275CBC8 /* FirebaseFirestore in Frameworks */,
+				CA4CA31CBCF92AB43761AE41 /* GoogleSignIn in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		E0C1FCE8599CFD8B29DA77CF = {
+			isa = PBXGroup;
+			children = (
+				806D80EDDD6DC26EFD52A013 /* iosApp */,
+				50CF74D469E6088F9EB7D00E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		806D80EDDD6DC26EFD52A013 /* iosApp */ = {
+			isa = PBXGroup;
+			children = (
+				35CD3188BE63955685216763 /* iOSApp.swift */,
+				6AC1904C13D77422EC790242 /* GoogleSignInBridge.swift */,
+				9C951E0F6049D00803F4AB93 /* Assets.xcassets */,
+				E7492242B9B4886C92A608A5 /* Info.plist */,
+			);
+			path = iosApp;
+			sourceTree = "<group>";
+		};
+		50CF74D469E6088F9EB7D00E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D2A57DC1D883FD21FB995169 /* Gym.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		42AEFBAE01D2DFD981F7DA7D /* iosApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FDF364E1380B97A6B748142A /* Build configuration list for PBXNativeTarget "iosApp" */;
+			buildPhases = (
+				A87BCF4B4958C83F2BC137F7 /* Compile Kotlin framework */,
+				9E944D6C5C24879454CC60B2 /* Sources */,
+				1AE019FD444C28C0FB4AD06F /* Frameworks */,
+				F945002E4E3747FAC4979CBA /* Resources */,
+				B6C2B2DDE11C7EB804B4522B /* Firebase config */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = iosApp;
+			packageProductDependencies = (
+				42A17EB741CF291FBBE55653 /* FirebaseAuth */,
+				E7D98614934D969A7697EE00 /* FirebaseFirestore */,
+				DF9E8AC45D159DBB090718EF /* GoogleSignIn */,
+			);
+			productName = iosApp;
+			productReference = D2A57DC1D883FD21FB995169 /* Gym.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		46F86FAA6BBF9AC94A7E4595 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = FB0A9E0824BEDFF6DE8AA308 /* Build configuration list for PBXProject "iosApp" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = E0C1FCE8599CFD8B29DA77CF;
+			packageReferences = (
+				C671634EF20AB50ACF5CB382 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				F80DB39F696FA862193565DE /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+			);
+			productRefGroup = 50CF74D469E6088F9EB7D00E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				42AEFBAE01D2DFD981F7DA7D /* iosApp */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F945002E4E3747FAC4979CBA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D0317420F376B6D550DD3011 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A87BCF4B4958C83F2BC137F7 /* Compile Kotlin framework */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Compile Kotlin framework";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Builds the shared Kotlin code (composeApp) into ComposeApp.framework for this SDK/architecture.\nif [ \"${OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED}\" = \"YES\" ]; then exit 0; fi\nif [ -z \"${JAVA_HOME}\" ]; then\n  for jdk in \"$HOME/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Home\" \"/Applications/Android Studio.app/Contents/jbr/Contents/Home\"; do\n    if [ -d \"$jdk\" ]; then export JAVA_HOME=\"$jdk\"; break; fi\n  done\nfi\ncd \"${SRCROOT}/..\"\n./gradlew :composeApp:embedAndSignAppleFrameworkForXcode\n";
+		};
+		B6C2B2DDE11C7EB804B4522B /* Firebase config */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Firebase config";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# GoogleService-Info.plist isn't in git. If it's there, copy it into the app and register\n# Google sign-in's return URL (its REVERSED_CLIENT_ID) in the built Info.plist.\nPLIST=\"${SRCROOT}/iosApp/GoogleService-Info.plist\"\nif [ ! -f \"$PLIST\" ]; then\n  echo \"warning: iosApp/iosApp/GoogleService-Info.plist is missing; the app will show Firebase setup instructions.\"\n  exit 0\nfi\ncp \"$PLIST\" \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nREVERSED=$(/usr/libexec/PlistBuddy -c \"Print :REVERSED_CLIENT_ID\" \"$PLIST\" 2>/dev/null)\nif [ -n \"$REVERSED\" ]; then\n  INFO=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n  /usr/libexec/PlistBuddy -c \"Delete :CFBundleURLTypes\" \"$INFO\" >/dev/null 2>&1 || true\n  /usr/libexec/PlistBuddy -c \"Add :CFBundleURLTypes array\" -c \"Add :CFBundleURLTypes:0 dict\" \\\n    -c \"Add :CFBundleURLTypes:0:CFBundleURLSchemes array\" -c \"Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $REVERSED\" \"$INFO\"\nelse\n  echo \"warning: GoogleService-Info.plist has no REVERSED_CLIENT_ID; enable Google sign-in in Firebase and download it again.\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		9E944D6C5C24879454CC60B2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DB3EA7D6A9D2D6CA7CFF686B /* iOSApp.swift in Sources */,
+				DD2AE4B7AD93F762746C91E8 /* GoogleSignInBridge.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		887A5C7011C9BCE00F732710 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		424492294FC90F3B1A875595 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		4B31FC737F45AD4B4E86B0FC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../composeApp/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+				);
+				INFOPLIST_FILE = iosApp/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-framework",
+					ComposeApp,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.t0ph0id.gym;
+				PRODUCT_NAME = Gym;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		715FB83D92EC3BF822F73DCE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../composeApp/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+				);
+				INFOPLIST_FILE = iosApp/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-framework",
+					ComposeApp,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.t0ph0id.gym;
+				PRODUCT_NAME = Gym;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		FB0A9E0824BEDFF6DE8AA308 /* Build configuration list for PBXProject "iosApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				887A5C7011C9BCE00F732710 /* Debug */,
+				424492294FC90F3B1A875595 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FDF364E1380B97A6B748142A /* Build configuration list for PBXNativeTarget "iosApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4B31FC737F45AD4B4E86B0FC /* Debug */,
+				715FB83D92EC3BF822F73DCE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C671634EF20AB50ACF5CB382 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 12.19.0;
+			};
+		};
+		F80DB39F696FA862193565DE /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		42A17EB741CF291FBBE55653 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C671634EF20AB50ACF5CB382 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		E7D98614934D969A7697EE00 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C671634EF20AB50ACF5CB382 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		DF9E8AC45D159DBB090718EF /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F80DB39F696FA862193565DE /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+}

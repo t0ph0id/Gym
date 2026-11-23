@@ -11,10 +11,13 @@ import kotlinx.datetime.toLocalDateTime
 @Composable
 expect fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit)
 
-/** Platform Google sign-in UI. Android: Credential Manager. iOS: GoogleSignIn SDK (later). */
+/** What Google sign-in hands back; Firebase on iOS also needs the access token. */
+data class GoogleTokens(val idToken: String, val accessToken: String? = null)
+
+/** Platform Google sign-in UI. Android: Credential Manager. iOS: the GoogleSignIn SDK. */
 interface GoogleAuth {
-    /** Shows the account picker and returns a Google ID token, or null if the user cancelled. */
-    suspend fun idToken(): String?
+    /** Shows the account picker and returns the Google tokens, or null if the user cancelled. */
+    suspend fun signIn(): GoogleTokens?
 
     /** Forgets the chosen account so the next sign-in shows the picker again. */
     suspend fun signOut()

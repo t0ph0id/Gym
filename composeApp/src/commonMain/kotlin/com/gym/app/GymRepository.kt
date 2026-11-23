@@ -43,8 +43,8 @@ class GymRepository {
     /** The signed-in user's uid, or null when signed out. Emits on every change. */
     val authState: Flow<String?> = auth.authStateChanged.map { it?.uid }
 
-    suspend fun signInWithGoogle(idToken: String) {
-        auth.signInWithCredential(GoogleAuthProvider.credential(idToken, null))
+    suspend fun signInWithGoogle(tokens: GoogleTokens) {
+        auth.signInWithCredential(GoogleAuthProvider.credential(tokens.idToken, tokens.accessToken))
     }
 
     fun googleDisplayName(): String = auth.currentUser?.displayName.orEmpty()

@@ -195,5 +195,5 @@ private fun CenteredMessage(title: String, body: String) {
 @Composable
 private fun FirebaseMissing() = CenteredMessage(
     "Firebase isn't set up yet",
-    "Put google-services.json in the composeApp folder and rebuild. The README has the steps.",
+    "Add the Firebase config file (google-services.json for Android, GoogleService-Info.plist for iPhone) and rebuild. The README has the steps.",
 )

@@ -10,3 +10,8 @@ captures/
 androidApp/google-services.json
 tools/firestore-emulator/*.jar
 tools/firestore-emulator/emulator.log
+iosApp/iosApp/GoogleService-Info.plist
+# Xcode per-user state and local build output
+xcuserdata/
+iosApp/build/
+*.xcuserstate
