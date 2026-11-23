@@ -233,15 +233,18 @@ def members_share_everything_inside_the_pair(c):
         c.expect(OK, client.set(f"partnerships/{PID}/workouts/w1/sets/s1", {"uid": ME, "weight": 85.0}),
                  f"{who} edits my set")
         c.expect(OK, client.set(f"partnerships/{PID}/plans/p", {"name": "Push"}), f"{who} saves a plan")
+        c.expect(OK, client.set(f"partnerships/{PID}/recipes/r1", {"url": "https://x.com/r", "title": "Oats"}),
+                 f"{who} saves a recipe")
         c.expect(OK, client.update(f"partnerships/{PID}", {"homeGymId": "gym2"}), f"{who} changes the home gym")
 
 
 @test
 def strangers_see_nothing_inside_the_pair(c):
     c.seed()
-    for path in ("workouts/w1", "workouts/w1/sets/s1", "lastWeights/chris", "progress/x", "exercisePhotos/x"):
+    for path in ("workouts/w1", "workouts/w1/sets/s1", "lastWeights/chris", "progress/x", "exercisePhotos/x", "recipes/r1"):
         c.expect(DENIED, c.stranger.get(f"partnerships/{PID}/{path}"), f"stranger reads {path}")
     c.expect(DENIED, c.stranger.set(f"partnerships/{PID}/workouts/w2", {"name": "x"}), "stranger adds a workout")
+    c.expect(DENIED, c.stranger.set(f"partnerships/{PID}/recipes/r2", {"url": "https://evil.example"}), "stranger adds a recipe")
     c.expect(DENIED, c.stranger.delete(f"partnerships/{PID}/workouts/w1"), "stranger deletes a workout")
     c.expect(DENIED, c.nobody.get(f"partnerships/{PID}/workouts/w1"), "signed-out read")
 

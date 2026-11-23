@@ -108,6 +108,17 @@ private fun Root(vm: GymViewModel) {
         vm.rest.stop(onlyIfEndsAt = end)
     }
 
+    // A link shared into Gym (Share → Gym): save it once you're in your pair, then show Recipes.
+    val shared by platform.sharedText.collectAsState()
+    val paired = session.profile?.partnershipId != null
+    LaunchedEffect(shared, paired) {
+        val text = shared ?: return@LaunchedEffect
+        if (!paired) return@LaunchedEffect
+        platform.consumeSharedText()
+        vm.recipes.addFromText(text)
+        vm.showRecipes()
+    }
+
     CompositionLocalProvider(LocalCustomCatalog provides customCatalog) {
     Box(Modifier.fillMaxSize()) {
         when {

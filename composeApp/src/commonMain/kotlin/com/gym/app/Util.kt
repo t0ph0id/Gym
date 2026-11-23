@@ -52,6 +52,10 @@ interface AppPlatform {
 
     /** Light or dark status/navigation bar icons, to match the app's theme. */
     fun setDarkSystemBars(dark: Boolean)
+
+    /** Text shared into Gym from another app (e.g. a recipe link), until [consumeSharedText]. */
+    val sharedText: kotlinx.coroutines.flow.StateFlow<String?>
+    fun consumeSharedText()
 }
 
 private const val ID_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

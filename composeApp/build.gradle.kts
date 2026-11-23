@@ -37,6 +37,7 @@ kotlin {
             // Exercise photos (loaded from a CDN, cached on disk)
             implementation("io.coil-kt.coil3:coil-compose:3.6.3")
             implementation("io.coil-kt.coil3:coil-network-ktor3:3.6.3")
+            implementation("io.ktor:ktor-client-core:3.6.1") // recipe link previews
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

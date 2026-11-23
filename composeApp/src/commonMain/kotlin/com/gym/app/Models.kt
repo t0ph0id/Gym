@@ -18,6 +18,7 @@ import kotlinx.serialization.Serializable
  * partnerships/{pid}/machineNotes/{uid}         MachineNotes (seat/pad settings per machine)
  * partnerships/{pid}/progress/{wid_uid_exId}    ProgressPoint (one per person per exercise per workout)
  * partnerships/{pid}/exercisePhotos/{customId}  ExercisePhoto (photo for one of your own exercises)
+ * partnerships/{pid}/recipes/{id}              Recipe (a shared link to a recipe)
  */
 
 @Serializable
@@ -216,3 +217,22 @@ fun weightKeys(name: String, gymId: String, brand: String?, isometric: Boolean =
     val key = exerciseKey(name) + if (isometric) "~iso" else ""
     return listOfNotNull(brand?.let { "$key@$gymId@${it.trim().lowercase()}" }, "$key@$gymId")
 }
+
+/** A recipe link the pair shares: the page's preview (title, picture, site) plus your own note and tags. */
+@Serializable
+data class Recipe(
+    val id: String = "",
+    val url: String = "",
+    val title: String = "",
+    val site: String = "",
+    val imageUrl: String? = null,
+    val note: String = "",
+    val tags: List<String> = emptyList(),
+    val favourite: Boolean = false,
+    val addedBy: String = "",
+    val addedAt: Long = 0,
+)
+
+val RECIPE_TAG_SUGGESTIONS = listOf(
+    "Breakfast", "Lunch", "Dinner", "Snack", "Post-workout", "High protein", "Meal prep", "Vegetarian", "Dessert",
+)

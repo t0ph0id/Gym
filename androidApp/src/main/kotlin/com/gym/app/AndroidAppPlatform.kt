@@ -110,6 +110,23 @@ class AndroidAppPlatform(private val activity: ComponentActivity) : AppPlatform 
         activity.startActivity(Intent.createChooser(send, null))
     }
 
+    // ---- text shared into the app (Share → Gym) ----
+
+    private val shared = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    override val sharedText: kotlinx.coroutines.flow.StateFlow<String?> = shared
+
+    override fun consumeSharedText() {
+        shared.value = null
+    }
+
+    /** Called with the intent the activity was started (or re-used) with. */
+    fun receive(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_SEND) {
+            val text = listOfNotNull(intent.getStringExtra(Intent.EXTRA_TEXT), intent.getStringExtra(Intent.EXTRA_SUBJECT)).joinToString(" ")
+            if (text.isNotBlank()) shared.value = text
+        }
+    }
+
     // ---- per-phone settings and system bars ----
 
     private val prefs = activity.getSharedPreferences("gym_settings", android.content.Context.MODE_PRIVATE)

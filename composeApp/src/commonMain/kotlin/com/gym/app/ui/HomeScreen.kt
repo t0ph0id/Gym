@@ -84,7 +84,7 @@ fun HomeScreen(vm: GymViewModel) {
     val plans by vm.plans.collectAsState()
     val workouts by vm.workouts.collectAsState()
     val historyLimit by vm.historyLimit.collectAsState()
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    val tab = vm.homeTab
     var menuOpen by remember { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var gymFilter by rememberSaveable { mutableStateOf<String?>(null) }
@@ -147,9 +147,10 @@ fun HomeScreen(vm: GymViewModel) {
             }
             item {
                 PrimaryTabRow(selectedTabIndex = tab, containerColor = Color.Transparent) {
-                    Tab(tab == 0, onClick = { tab = 0 }, text = { Text("Plans") })
-                    Tab(tab == 1, onClick = { tab = 1 }, text = { Text("History") })
-                    Tab(tab == 2, onClick = { tab = 2 }, text = { Text("Progress") })
+                    HomeTab("Plans", tab == 0) { vm.homeTab = 0 }
+                    HomeTab("History", tab == 1) { vm.homeTab = 1 }
+                    HomeTab("Progress", tab == 2) { vm.homeTab = 2 }
+                    HomeTab("Recipes", tab == 3) { vm.homeTab = 3 }
                 }
             }
             if (tab == 0) {
@@ -204,6 +205,8 @@ fun HomeScreen(vm: GymViewModel) {
                         onDuplicate = { vm.duplicatePlan(plan) },
                     )
                 }
+            } else if (tab == 3) {
+                item(key = "recipes") { RecipesTab(vm) }
             } else if (tab == 2) {
                 item {
                     // Collected only here, so progress records aren't synced while you're elsewhere.
@@ -471,6 +474,23 @@ private fun HistorySearch(
                 }
             }
         }
+    }
+}
+
+/**
+ * A Home tab with less side padding than the default, so all four names stay on one line even with
+ * the phone's text size turned up.
+ */
+@Composable
+private fun HomeTab(label: String, selected: Boolean, onClick: () -> Unit) {
+    Tab(selected, onClick = onClick, selectedContentColor = MaterialTheme.colorScheme.primary) {
+        Text(
+            label,
+            style = MaterialTheme.typography.titleSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 14.dp),
+        )
     }
 }
 

@@ -5,6 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gym.app.state.Gyms
 import com.gym.app.state.OwnExercises
+import com.gym.app.state.Recipes
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import com.gym.app.state.RestTimer
 import com.gym.app.state.VmContext
 import kotlinx.coroutines.CancellationException
@@ -97,6 +101,16 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
     val gyms = Gyms(ctx, partnership)
     val rest = RestTimer(ctx) { session.value.profile }
     val ownExercises = OwnExercises(ctx)
+    val recipes = Recipes(ctx, { uid }) { undoNotice.value = it }
+
+    /** Home's selected tab (0 Plans, 1 History, 2 Progress, 3 Recipes); kept while you visit other screens. */
+    var homeTab by mutableIntStateOf(0)
+
+    /** Back to Home on the Recipes tab (after sharing a link into the app). */
+    fun showRecipes() {
+        stack.clear(); stack.add(Screen.Home)
+        homeTab = 3
+    }
 
     /** How many recent workouts to keep in sync; History's "Show older" raises it. */
     val historyLimit = MutableStateFlow(HISTORY_PAGE)

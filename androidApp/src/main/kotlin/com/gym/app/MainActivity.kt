@@ -1,5 +1,6 @@
 package com.gym.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,7 +16,17 @@ class MainActivity : ComponentActivity() {
         val firebaseReady = FirebaseApp.getApps(this).isNotEmpty()
         val googleAuth = AndroidGoogleAuth(this)
         val platform = AndroidAppPlatform(this)
+        this.platform = platform
+        // A shared link, only the first time (not again when the screen rotates).
+        if (savedInstanceState == null) platform.receive(intent)
         setContent { App(firebaseReady = firebaseReady, googleAuth = googleAuth, platform = platform) }
+    }
+
+    private var platform: AndroidAppPlatform? = null
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        platform?.receive(intent)
     }
 
     override fun onStart() {

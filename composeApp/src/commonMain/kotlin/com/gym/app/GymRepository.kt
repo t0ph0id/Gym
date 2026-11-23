@@ -36,6 +36,7 @@ class GymRepository {
     private fun notesRef(pid: String) = pairRef(pid).collection("machineNotes")
     private fun progressRef(pid: String) = pairRef(pid).collection("progress")
     private fun photosRef(pid: String) = pairRef(pid).collection("exercisePhotos")
+    private fun recipesRef(pid: String) = pairRef(pid).collection("recipes")
 
     // ---- auth (Google accounts, so data follows you to a new phone) ----
 
@@ -259,6 +260,27 @@ class GymRepository {
         photosRef(pid).document(customId).set(ExercisePhoto(jpegBase64))
 
     suspend fun deleteExercisePhoto(pid: String, customId: String) = photosRef(pid).document(customId).delete()
+
+    // ---- recipes ----
+
+    /** Newest first. */
+    fun recipes(pid: String): Flow<List<Recipe>> =
+        recipesRef(pid).snapshots.map { q -> q.documents.map { it.data<Recipe>() }.sortedByDescending { it.addedAt } }
+
+    suspend fun saveRecipe(pid: String, recipe: Recipe) = recipesRef(pid).document(recipe.id).set(recipe)
+
+    suspend fun setRecipeFavourite(pid: String, id: String, favourite: Boolean) =
+        recipesRef(pid).document(id).updateFields { "favourite" to favourite }
+
+    /** Only the preview fields, so a note or tags typed meanwhile on the other phone are kept. */
+    suspend fun setRecipePreview(pid: String, id: String, title: String, site: String, imageUrl: String?) =
+        recipesRef(pid).document(id).updateFields {
+            "title" to title
+            "site" to site
+            "imageUrl" to imageUrl
+        }
+
+    suspend fun deleteRecipe(pid: String, id: String) = recipesRef(pid).document(id).delete()
 
     // ---- custom exercises ----
 
