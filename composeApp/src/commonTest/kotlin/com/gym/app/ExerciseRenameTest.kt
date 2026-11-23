@@ -49,4 +49,14 @@ class ExerciseRenameTest {
         assertEquals("sled drive", p.exerciseKey)
         assertEquals("sled drive@home@gym80", p.setupKey)
     }
+
+    @Test
+    fun renameReachesWarmUpAndMobility() {
+        val plan = Plan(warmUp = Circuit(listOf("Mat crunch", "Arm circles")), mobility = Circuit(listOf("mat crunch")))
+        val r = plan.renamed("Mat crunch", "Mat sit-up")!!
+        assertEquals(listOf("Mat sit-up", "Arm circles"), r.warmUp.exercises)
+        assertEquals(listOf("Mat sit-up"), r.mobility.exercises)
+        val w = Workout(warmUp = Circuit(listOf("Mat crunch"))).renamed("Mat crunch", "Mat sit-up")!!
+        assertEquals(listOf("Mat sit-up"), w.warmUp.exercises)
+    }
 }

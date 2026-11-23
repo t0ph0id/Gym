@@ -73,12 +73,28 @@ data class PlanExercise(
     val isometric: Boolean = false,
 )
 
+/**
+ * A plan's Warm-up or Mobility section: a list of moves (exercise names, usually from
+ * [MobilityCatalog]) done as a circuit, [rounds] times. Nothing is logged for them.
+ */
+@Serializable
+data class Circuit(
+    val exercises: List<String> = emptyList(),
+    val rounds: Int = 1,
+) {
+    val isEmpty: Boolean get() = exercises.isEmpty()
+}
+
 @Serializable
 data class Plan(
     val id: String = "",
     val name: String = "",
     val exercises: List<PlanExercise> = emptyList(),
     val updatedAt: Long = 0,
+    /** Done before the exercises. */
+    val warmUp: Circuit = Circuit(),
+    /** Done after the exercises. */
+    val mobility: Circuit = Circuit(),
 )
 
 @Serializable
@@ -107,6 +123,9 @@ data class Workout(
     val finishedAt: Long? = null,
     /** New personal bests set in this workout: uid -> exercise names. Filled in at finish. */
     val prs: Map<String, List<String>> = emptyMap(),
+    /** Copied from the plan when the workout starts. */
+    val warmUp: Circuit = Circuit(),
+    val mobility: Circuit = Circuit(),
 )
 
 @Serializable

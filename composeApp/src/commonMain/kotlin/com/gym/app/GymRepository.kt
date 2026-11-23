@@ -293,6 +293,8 @@ class GymRepository {
                 writes += {
                     it.updateFields(doc.reference) {
                         exercises(w.exercises)
+                        "warmUp".to(Circuit.serializer(), w.warmUp)
+                        "mobility".to(Circuit.serializer(), w.mobility)
                         "prs".to(MapSerializer(String.serializer(), ListSerializer(String.serializer())), w.prs)
                     }
                 }

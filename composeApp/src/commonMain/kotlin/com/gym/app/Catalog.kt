@@ -23,6 +23,14 @@ enum class Equipment(val label: String) {
     Other("Other"),
 }
 
+/** Kinds in the warm-up & mobility catalogue. */
+enum class WarmUpKind(val label: String) {
+    Cardio("Cardio"),
+    Dynamic("Dynamic"),
+    Stretch("Stretch"),
+    FoamRoller("Foam roller"),
+}
+
 data class CatalogExercise(
     val name: String,
     val muscle: Muscle,
@@ -32,12 +40,15 @@ data class CatalogExercise(
     val custom: Boolean = false,
     /** For your own exercises: the CustomExercise id (its photo is stored under this id). */
     val customId: String? = null,
+    /** Set for entries of the warm-up & mobility catalogue. */
+    val kind: WarmUpKind? = null,
 ) {
     /** Start and end position photos. */
     private val photoId: String? get() = imageId?.takeIf { it !in ExerciseInstructions.noPhotos }
     val imageUrls: List<String> get() = photoId?.let { id -> listOf(imageUrl(id, 0), imageUrl(id, 1)) }.orEmpty()
     val thumbnailUrl: String? get() = photoId?.let { imageUrl(it, 0) }
-    val instructions: List<String> get() = imageId?.let { ExerciseInstructions.byId[it] }.orEmpty()
+    val instructions: List<String>
+        get() = imageId?.let { ExerciseInstructions.byId[it] ?: MobilityData.instructions[it] }.orEmpty()
 }
 
 // Photos and instructions: github.com/yuhonas/free-exercise-db (The Unlicense), served by jsDelivr
@@ -194,6 +205,18 @@ object Catalog {
     private val byKey: Map<String, CatalogExercise> = exercises.associateBy { exerciseKey(it.name) }
 
     /** Built-in entry for an exercise name (used to show pictures on workout/plan cards). */
+    fun find(name: String): CatalogExercise? = byKey[exerciseKey(name)]
+}
+
+/**
+ * Warm-up & mobility moves (cardio, dynamic, stretches, foam rolling) for a plan's Warm-up and
+ * Mobility sections. Generated from free-exercise-db by tools/make_mobility.py.
+ */
+object MobilityCatalog {
+    val exercises: List<CatalogExercise> get() = MobilityData.exercises
+
+    private val byKey: Map<String, CatalogExercise> by lazy { MobilityData.exercises.associateBy { exerciseKey(it.name) } }
+
     fun find(name: String): CatalogExercise? = byKey[exerciseKey(name)]
 }
 

@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
 import com.gym.app.Catalog
+import com.gym.app.MobilityCatalog
 import com.gym.app.CatalogExercise
 import com.gym.app.Equipment
 import com.gym.app.LocalAppPlatform
@@ -76,7 +77,7 @@ val LocalCustomCatalog = compositionLocalOf { CustomCatalog() }
 /** Built-in exercise for [name], or one of your own; null if it's unknown. */
 @Composable
 fun findExercise(name: String): CatalogExercise? =
-    Catalog.find(name) ?: LocalCustomCatalog.current.byKey[exerciseKey(name)]
+    Catalog.find(name) ?: MobilityCatalog.find(name) ?: LocalCustomCatalog.current.byKey[exerciseKey(name)]
 
 /** Square photo of the start position; a dumbbell icon when there's no photo (or while offline). */
 @Composable

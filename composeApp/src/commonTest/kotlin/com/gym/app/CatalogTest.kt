@@ -65,4 +65,27 @@ class CatalogTest {
         assertEquals("x", c.customId, "custom exercises keep their id so their photo can be found")
         assertTrue(c.imageUrls.isEmpty())
     }
+
+    // ---- warm-up & mobility catalogue ----
+
+    @Test
+    fun mobilityNamesAreUniqueAndEveryEntryHasAKindPhotoAndInstructions() {
+        val m = MobilityCatalog.exercises
+        assertTrue(m.size > 100)
+        val dupes = m.groupBy { exerciseKey(it.name) }.filterValues { it.size > 1 }.keys
+        assertTrue(dupes.isEmpty(), "duplicate warm-up names: $dupes")
+        m.forEach {
+            assertNotNull(it.kind, it.name)
+            assertNotNull(it.thumbnailUrl, "${it.name} has no photo")
+            assertTrue(it.instructions.isNotEmpty(), "${it.name} has no instructions")
+        }
+        WarmUpKind.entries.forEach { k -> assertTrue(m.any { it.kind == k }, "no $k moves") }
+    }
+
+    @Test
+    fun mobilityFindsByNameAndStrengthCatalogueIsUnchanged() {
+        assertEquals(WarmUpKind.Dynamic, MobilityCatalog.find("world's GREATEST stretch")?.kind)
+        assertEquals(WarmUpKind.FoamRoller, MobilityCatalog.find("Foam roll: calves")?.kind)
+        assertTrue(Catalog.exercises.all { it.kind == null })
+    }
 }

@@ -251,6 +251,8 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
                 )
             },
             startedAt = nowMillis(),
+            warmUp = plan?.warmUp ?: Circuit(),
+            mobility = plan?.mobility ?: Circuit(),
         )
         justStarted = workout.id
         val members = members()

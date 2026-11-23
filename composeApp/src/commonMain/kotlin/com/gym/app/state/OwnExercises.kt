@@ -1,6 +1,7 @@
 package com.gym.app.state
 
 import com.gym.app.Catalog
+import com.gym.app.MobilityCatalog
 import com.gym.app.CustomExercise
 import com.gym.app.Equipment
 import com.gym.app.Muscle
@@ -45,7 +46,7 @@ class OwnExercises internal constructor(private val ctx: VmContext) {
         val clean = name.trim().take(40).replaceFirstChar { it.uppercase() }
         if (clean.isEmpty()) return "Give it a name"
         val renamed = exerciseKey(clean) != exerciseKey(old.name)
-        if (renamed && (Catalog.find(clean) != null || list.value.any { exerciseKey(it.name) == exerciseKey(clean) })) {
+        if (renamed && (Catalog.find(clean) != null || MobilityCatalog.find(clean) != null || list.value.any { exerciseKey(it.name) == exerciseKey(clean) })) {
             return "There's already an exercise called $clean"
         }
         val updated = old.copy(name = clean, muscle = muscle.name, equipment = equipment.name)

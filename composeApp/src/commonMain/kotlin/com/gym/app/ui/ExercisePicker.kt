@@ -59,6 +59,8 @@ import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import com.gym.app.Catalog
 import com.gym.app.CatalogExercise
+import com.gym.app.MobilityCatalog
+import com.gym.app.WarmUpKind
 import com.gym.app.Equipment
 import com.gym.app.GymViewModel
 import com.gym.app.LocalAppPlatform
@@ -80,19 +82,22 @@ fun ExercisePicker(
     onAdd: (List<String>) -> Unit,
     /** Pick exactly one exercise (used to swap one in a plan): tapping a row returns it at once. */
     single: Boolean = false,
+    /** For a Warm-up or Mobility section: the warm-up & mobility catalogue, grouped by kind. */
+    mobility: Boolean = false,
+    title: String = if (single) "Swap exercise" else "Add exercises",
 ) {
     val custom by vm.ownExercises.list.collectAsState()
     val workouts by vm.workouts.collectAsState()
 
-    val all = remember(custom) {
-        (Catalog.exercises + custom.map { it.toCatalog() })
+    val all = remember(custom, mobility) {
+        ((if (mobility) MobilityCatalog.exercises else Catalog.exercises) + custom.map { it.toCatalog() })
             .distinctBy { exerciseKey(it.name) }
             .sortedBy { it.name.lowercase() }
     }
     val byKey = remember(all) { all.associateBy { exerciseKey(it.name) } }
     // Most recently used first, from your shared workout history.
     val recent = remember(workouts, byKey) {
-        workouts.flatMap { w -> w.exercises.map { it.name } }
+        workouts.flatMap { w -> if (mobility) w.warmUp.exercises + w.mobility.exercises else w.exercises.map { it.name } }
             .distinctBy(::exerciseKey)
             .take(8)
             .map { byKey[exerciseKey(it)] ?: CatalogExercise(it, Muscle.Other, Equipment.Other, custom = true) }
@@ -101,6 +106,7 @@ fun ExercisePicker(
     var query by remember { mutableStateOf("") }
     var muscle by remember { mutableStateOf<Muscle?>(null) }
     var equipment by remember { mutableStateOf<Equipment?>(null) }
+    var kind by remember { mutableStateOf<WarmUpKind?>(null) }
     var creating by remember { mutableStateOf<String?>(null) }
     var showing by remember { mutableStateOf<CatalogExercise?>(null) }
     val selected = remember { mutableStateListOf<String>() } // names, in the order picked
@@ -117,7 +123,7 @@ fun ExercisePicker(
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(Modifier.fillMaxSize().imePadding()) {
                 TopAppBar(
-                    title = { Text(if (single) "Swap exercise" else "Add exercises") },
+                    title = { Text(title) },
                     navigationIcon = { IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") } },
                     actions = {
                         if (!single) Button(
@@ -151,7 +157,15 @@ fun ExercisePicker(
                         FilterChip(muscle == m, onClick = { muscle = if (muscle == m) null else m }, label = { Text(m.label) })
                     }
                 }
-                LazyRow(
+                if (mobility) LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    item { FilterChip(kind == null, onClick = { kind = null }, label = { Text("All kinds") }) }
+                    items(WarmUpKind.entries) { k ->
+                        FilterChip(kind == k, onClick = { kind = if (kind == k) null else k }, label = { Text(k.label) })
+                    }
+                } else LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -165,6 +179,7 @@ fun ExercisePicker(
                 val filtered = all.filter {
                     (muscle == null || it.muscle == muscle) &&
                         (equipment == null || it.equipment == equipment) &&
+                        (kind == null || it.kind == kind) &&
                         (q.isEmpty() || it.name.contains(q, ignoreCase = true))
                 }
                 val browsing = q.isEmpty() && muscle == null
@@ -191,11 +206,24 @@ fun ExercisePicker(
                         }
                     }
                     if (browsing) {
-                        if (recent.isNotEmpty() && equipment == null) {
+                        if (recent.isNotEmpty() && equipment == null && kind == null) {
                             item(key = "h-recent") { SectionHeader("Recent") }
                             items(recent, key = { "recent-" + exerciseKey(it.name) }) { Row(it) }
                         }
-                        for (m in Muscle.entries) {
+                        if (mobility) {
+                            // Grouped by kind; your own exercises (no kind) at the end.
+                            for (k in WarmUpKind.entries) {
+                                val group = filtered.filter { it.kind == k }
+                                if (group.isEmpty()) continue
+                                item(key = "h-${k.name}") { SectionHeader(k.label) }
+                                items(group, key = { "all-" + exerciseKey(it.name) }) { Row(it) }
+                            }
+                            val own = filtered.filter { it.kind == null }
+                            if (own.isNotEmpty()) {
+                                item(key = "h-own") { SectionHeader("Your own") }
+                                items(own, key = { "all-" + exerciseKey(it.name) }) { Row(it) }
+                            }
+                        } else for (m in Muscle.entries) {
                             val group = filtered.filter { it.muscle == m }
                             if (group.isEmpty()) continue
                             item(key = "h-${m.name}") { SectionHeader(m.label) }
@@ -250,8 +278,8 @@ private fun ExerciseRow(
     onShowDetails: () -> Unit,
 ) {
     val detail = buildString {
-        append(ex.equipment.label)
-        if (ex.muscle != Muscle.Other) append(" · ").append(ex.muscle.label)
+        append(ex.kind?.label ?: ex.equipment.label)
+        if (ex.muscle != Muscle.Other && ex.kind != WarmUpKind.Cardio) append(" · ").append(ex.muscle.label)
         if (ex.custom) append(" · Custom")
     }
     ListItem(

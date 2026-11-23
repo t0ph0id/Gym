@@ -355,6 +355,17 @@ private fun PlanCard(plan: Plan, canStart: Boolean, onStart: () -> Unit, onEdit:
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(end = 8.dp),
             )
+            listOfNotNull(
+                plan.warmUp.takeUnless { it.isEmpty }?.let { "Warm-up: ${it.summary()}" },
+                plan.mobility.takeUnless { it.isEmpty }?.let { "Mobility: ${it.summary()}" },
+            ).takeIf { it.isNotEmpty() }?.let {
+                Text(
+                    it.joinToString("  ·  "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.padding(top = 2.dp, end = 8.dp),
+                )
+            }
             Spacer(Modifier.size(12.dp))
             Button(onClick = onStart, enabled = canStart) {
                 Icon(Icons.Default.PlayArrow, null, Modifier.size(18.dp))

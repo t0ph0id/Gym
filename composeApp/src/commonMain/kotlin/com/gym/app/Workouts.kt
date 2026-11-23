@@ -19,4 +19,6 @@ fun repeatOf(source: Workout, newWorkoutId: String, gymId: String, gym: GymLocat
             )
         },
         startedAt = now,
+        warmUp = source.warmUp,
+        mobility = source.mobility,
     )

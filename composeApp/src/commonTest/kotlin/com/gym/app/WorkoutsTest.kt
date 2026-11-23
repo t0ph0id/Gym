@@ -1,5 +1,6 @@
 package com.gym.app
 
+import com.gym.app.ui.summary
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -18,6 +19,8 @@ class WorkoutsTest {
         ),
         startedAt = 1,
         finishedAt = 2,
+        warmUp = Circuit(listOf("Exercise bike", "Arm circles"), rounds = 1),
+        mobility = Circuit(listOf("Child's pose", "Foam roll: calves"), rounds = 3),
     )
 
     private fun repeat(gymId: String, gym: GymLocation?): Workout {
@@ -47,6 +50,15 @@ class WorkoutsTest {
         assertNull(w.exercises[0].gymId)
         assertNull(w.exercises[0].brand, "gym80 isn't at Oerlikon")
     }
+
+    @Test
+    fun repeatKeepsWarmUpAndMobility() {
+        val w = repeat("home", GymLocation("home", "Evo Wiedikon"))
+        assertEquals(source.warmUp, w.warmUp)
+        assertEquals(source.mobility, w.mobility)
+        assertEquals("2 moves · 3 rounds", w.mobility.summary())
+        assertEquals("2 moves", w.warmUp.summary())
+    }
 }
 
 class FormattingTest {
@@ -74,4 +86,5 @@ class FirestoreShapeTest {
         val serialKeys = WorkoutExercise.serializer().descriptor.elementNames.toSet()
         assertEquals(serialKeys, mapKeys)
     }
+
 }

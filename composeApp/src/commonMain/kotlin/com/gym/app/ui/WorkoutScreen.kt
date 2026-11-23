@@ -208,7 +208,10 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
             workout == null -> Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
                 Text("This workout was deleted.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            else -> LazyColumn(
+            else -> {
+                // Lazy index of the first exercise card: gym line, summary (finished), warm-up.
+                val firstCard = 1 + (if (!active) 1 else 0) + (if (!workout.warmUp.isEmpty) 1 else 0)
+                LazyColumn(
                 Modifier.fillMaxSize().padding(pad).imePadding(),
                 state = listState,
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 32.dp),
@@ -227,7 +230,7 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                         if (active && partner != null) {
                             PartnerPosition(vm.nameOf(partner), workout, sets, partner) { exerciseId ->
                                 val i = workout.exercises.indexOfFirst { it.id == exerciseId }
-                                if (i >= 0) scope.launch { listState.animateScrollToItem(1 + i) }
+                                if (i >= 0) scope.launch { listState.animateScrollToItem(firstCard + i) }
                             }
                         }
                     }
@@ -235,10 +238,12 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                 if (!active) {
                     item { WorkoutSummary(vm, workout, sets, members) }
                 }
+                if (!workout.warmUp.isEmpty) {
+                    item(key = "warmUp") { CircuitCard("Warm-up", workout.warmUp) }
+                }
                 if (workout.exercises.isEmpty()) {
                     item { EmptyState("No exercises yet", "Pick from the catalogue below.") }
                 }
-                val firstCard = if (active) 1 else 2 // lazy index of the first exercise card
                 itemsIndexed(workout.exercises, key = { _, ex -> ex.id }) { index, ex ->
                     ExerciseCard(
                         vm = vm,
@@ -264,6 +269,10 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                         Text("Add exercise")
                     }
                 }
+                if (!workout.mobility.isEmpty) {
+                    item(key = "mobility") { CircuitCard("Mobility", workout.mobility) }
+                }
+            }
             }
         }
     }

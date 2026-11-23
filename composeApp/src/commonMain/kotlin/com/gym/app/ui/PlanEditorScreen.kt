@@ -57,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.gym.app.Circuit
 import com.gym.app.Equipment
 import com.gym.app.GymViewModel
 import com.gym.app.Plan
@@ -77,13 +78,18 @@ fun PlanEditorScreen(vm: GymViewModel, planId: String?) {
             addAll(original?.exercises.orEmpty())
         }
     }
+    var warmUp by remember { mutableStateOf(original?.warmUp ?: Circuit()) }
+    var mobility by remember { mutableStateOf(original?.mobility ?: Circuit()) }
+    /** "warmUp" or "mobility" while picking moves for that section. */
+    var pickingCircuit by remember { mutableStateOf<String?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
     var swappingIndex by remember { mutableStateOf<Int?>(null) }
     var confirmDiscard by remember { mutableStateOf(false) }
 
     // Unsaved changes? Then Back asks first instead of silently throwing them away.
-    val dirty = name != original?.name.orEmpty() || exercises.toList() != original?.exercises.orEmpty()
+    val dirty = name != original?.name.orEmpty() || exercises.toList() != original?.exercises.orEmpty() ||
+        warmUp != (original?.warmUp ?: Circuit()) || mobility != (original?.mobility ?: Circuit())
     fun leave() { if (dirty) confirmDiscard = true else vm.back() }
     PlatformBackHandler(enabled = dirty) { confirmDiscard = true }
 
@@ -94,6 +100,8 @@ fun PlanEditorScreen(vm: GymViewModel, planId: String?) {
                 name = name.trim(),
                 exercises = exercises.filter { it.name.isNotBlank() }.map { it.copy(name = it.name.trim()) },
                 updatedAt = nowMillis(),
+                warmUp = warmUp,
+                mobility = mobility,
             )
         )
     }
@@ -128,6 +136,15 @@ fun PlanEditorScreen(vm: GymViewModel, planId: String?) {
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+            item(key = "warmUp") {
+                CircuitEditor(
+                    title = "Warm-up",
+                    hint = "Moves to do before the exercises, e.g. bike, leg swings, hip circles.",
+                    circuit = warmUp,
+                    onChange = { warmUp = it },
+                    onAdd = { pickingCircuit = "warmUp" },
+                )
+            }
             itemsIndexed(exercises, key = { _, e -> e.id }) { i, ex ->
                 ExerciseEditor(
                     ex,
@@ -150,7 +167,32 @@ fun PlanEditorScreen(vm: GymViewModel, planId: String?) {
                     Text("Add exercises")
                 }
             }
+            item(key = "mobility") {
+                CircuitEditor(
+                    title = "Mobility",
+                    hint = "Moves to do after the exercises, e.g. stretches or foam rolling.",
+                    circuit = mobility,
+                    onChange = { mobility = it },
+                    onAdd = { pickingCircuit = "mobility" },
+                )
+            }
         }
+    }
+
+    pickingCircuit?.let { which ->
+        val current = if (which == "warmUp") warmUp else mobility
+        ExercisePicker(
+            vm = vm,
+            alreadyAdded = current.exercises.map(::exerciseKey).toSet(),
+            mobility = true,
+            title = if (which == "warmUp") "Add to warm-up" else "Add to mobility",
+            onDismiss = { pickingCircuit = null },
+            onAdd = { names ->
+                pickingCircuit = null
+                val updated = current.copy(exercises = current.exercises + names)
+                if (which == "warmUp") warmUp = updated else mobility = updated
+            },
+        )
     }
 
     if (picking) {

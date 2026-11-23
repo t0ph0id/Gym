@@ -25,18 +25,32 @@ fun LastWeights.renamed(oldName: String, newName: String) = LastWeights(
 
 private fun String.isExercise(name: String) = exerciseKey(this) == exerciseKey(name)
 
-/** The workout with the exercise renamed (exercise list and personal bests), or null if it isn't in it. */
+private fun Circuit.renamed(oldName: String, newName: String) =
+    copy(exercises = exercises.map { if (it.isExercise(oldName)) newName else it })
+
+private fun Circuit.has(name: String) = exercises.any { it.isExercise(name) }
+
+/**
+ * The workout with the exercise renamed (exercise list, personal bests, warm-up and mobility), or
+ * null if it isn't in it.
+ */
 fun Workout.renamed(oldName: String, newName: String): Workout? {
-    if (exercises.none { it.name.isExercise(oldName) }) return null
+    if (exercises.none { it.name.isExercise(oldName) } && !warmUp.has(oldName) && !mobility.has(oldName)) return null
     return copy(
         exercises = exercises.map { if (it.name.isExercise(oldName)) it.copy(name = newName) else it },
         prs = prs.mapValues { (_, names) -> names.map { if (it.isExercise(oldName)) newName else it } },
+        warmUp = warmUp.renamed(oldName, newName),
+        mobility = mobility.renamed(oldName, newName),
     )
 }
 
 fun Plan.renamed(oldName: String, newName: String): Plan? {
-    if (exercises.none { it.name.isExercise(oldName) }) return null
-    return copy(exercises = exercises.map { if (it.name.isExercise(oldName)) it.copy(name = newName) else it })
+    if (exercises.none { it.name.isExercise(oldName) } && !warmUp.has(oldName) && !mobility.has(oldName)) return null
+    return copy(
+        exercises = exercises.map { if (it.name.isExercise(oldName)) it.copy(name = newName) else it },
+        warmUp = warmUp.renamed(oldName, newName),
+        mobility = mobility.renamed(oldName, newName),
+    )
 }
 
 fun ProgressPoint.renamed(oldName: String, newName: String) = copy(
