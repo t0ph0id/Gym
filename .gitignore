@@ -1,0 +1,12 @@
+.gradle/
+build/
+.idea/
+.kotlin/
+*.iml
+local.properties
+.DS_Store
+captures/
+# Firebase config is project-specific; keep it out of public repos.
+androidApp/google-services.json
+tools/firestore-emulator/*.jar
+tools/firestore-emulator/emulator.log

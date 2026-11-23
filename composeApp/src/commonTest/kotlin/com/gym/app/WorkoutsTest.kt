@@ -1,0 +1,77 @@
+package com.gym.app
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlinx.serialization.descriptors.elementNames
+
+class WorkoutsTest {
+    private val source = Workout(
+        id = "old",
+        planId = "plan1",
+        name = "Push day",
+        gymId = "home",
+        exercises = listOf(
+            WorkoutExercise("a", "Leg press", 4, 8, gymId = "oerlikon", brand = "gym80", isometric = true),
+            WorkoutExercise("b", "Bench press", 3, 10),
+        ),
+        startedAt = 1,
+        finishedAt = 2,
+    )
+
+    private fun repeat(gymId: String, gym: GymLocation?): Workout {
+        var n = 0
+        return repeatOf(source, "new", gymId, gym, now = 99) { "id${n++}" }
+    }
+
+    @Test
+    fun copiesExercisesWithFreshIds() {
+        val w = repeat("home", GymLocation("home", "Evo Wiedikon", listOf("Technogym", "gym80")))
+        assertEquals("new", w.id)
+        assertEquals("Push day", w.name)
+        assertEquals("plan1", w.planId)
+        assertEquals(listOf("Leg press", "Bench press"), w.exercises.map { it.name })
+        assertTrue(w.exercises.none { it.id == "a" || it.id == "b" })
+        assertEquals(4, w.exercises[0].targetSets)
+        assertEquals(true, w.exercises[0].isometric)
+        assertEquals("gym80", w.exercises[0].brand)
+        assertEquals(99, w.startedAt)
+        assertNull(w.finishedAt)
+    }
+
+    @Test
+    fun dropsPerExerciseGymAndBrandsTheGymDoesntHave() {
+        val w = repeat("oerlikon", GymLocation("oerlikon", "Evo Oerlikon", listOf("Technogym", "Hammer Strength")))
+        assertEquals("oerlikon", w.gymId)
+        assertNull(w.exercises[0].gymId)
+        assertNull(w.exercises[0].brand, "gym80 isn't at Oerlikon")
+    }
+}
+
+class FormattingTest {
+    @Test
+    fun setsAreSingularOrPlural() {
+        assertEquals("1 set", com.gym.app.ui.setsLabel(1))
+        assertEquals("3 sets", com.gym.app.ui.setsLabel(3))
+        assertEquals("0 sets", com.gym.app.ui.setsLabel(0))
+    }
+
+    @Test
+    fun volumeUsesSwissThousandsSeparator() {
+        assertEquals("232 kg", com.gym.app.ui.formatVolume(232.0))
+        assertEquals("1'480 kg", com.gym.app.ui.formatVolume(1480.0))
+        assertEquals("12'345 kg", com.gym.app.ui.formatVolume(12345.6))
+    }
+}
+
+class FirestoreShapeTest {
+    @Test
+    fun arrayUnionMapHasExactlyTheSerializedFields() {
+        // Exercises added with arrayUnion are written as raw maps; if a field were missing or
+        // misnamed, reading the workout back would silently lose it.
+        val mapKeys = WorkoutExercise("a", "Leg press", 3, 10, "gym", "gym80", true).toFirestoreMap().keys
+        val serialKeys = WorkoutExercise.serializer().descriptor.elementNames.toSet()
+        assertEquals(serialKeys, mapKeys)
+    }
+}
