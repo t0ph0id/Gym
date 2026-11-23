@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -292,6 +293,9 @@ private fun ExerciseRow(
                 // U11: a clear way to the how-to, separate from selecting the row.
                 if (ex.imageId != null) {
                     IconButton(onClick = onShowDetails) { Icon(Icons.Outlined.Info, "How to do ${ex.name}") }
+                } else if (ex.customId != null) {
+                    // Your own exercises: photo, rename and delete live in the same dialog.
+                    IconButton(onClick = onShowDetails) { Icon(Icons.Outlined.Edit, "Edit or delete ${ex.name}") }
                 }
                 if (added) Text("Added", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 else Checkbox(checked = selected, onCheckedChange = null)
