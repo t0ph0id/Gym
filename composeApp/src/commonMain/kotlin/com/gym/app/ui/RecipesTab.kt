@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -45,11 +46,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,18 +70,51 @@ import com.gym.app.Recipe
 import com.gym.app.firstUrl
 import com.gym.app.formatDateTime
 
-/** Home's Recipes tab: shared recipe links with search, tag and favourite filters. */
-@Composable
-fun RecipesTab(vm: GymViewModel) {
-    val recipes by vm.recipes.list.collectAsState()
-    var adding by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf<Recipe?>(null) }
-    var query by rememberSaveable { mutableStateOf("") }
-    var tag by rememberSaveable { mutableStateOf<String?>(null) }
-    var favouritesOnly by rememberSaveable { mutableStateOf(false) }
+/** What the Recipes tab is showing: search, filters and open dialogs. */
+class RecipesUi {
+    var adding by mutableStateOf(false)
+    var editing by mutableStateOf<Recipe?>(null)
+    var query by mutableStateOf("")
+    var tag by mutableStateOf<String?>(null)
+    var favouritesOnly by mutableStateOf(false)
+}
 
+@Composable
+fun rememberRecipesUi(): RecipesUi = remember { RecipesUi() }
+
+/**
+ * Home's Recipes tab as list items: the header (add, search, filters) and then one item per recipe,
+ * so only the cards on screen are drawn, however many recipes you collect.
+ */
+fun LazyListScope.recipesTab(vm: GymViewModel, ui: RecipesUi, recipes: List<Recipe>) {
+    item(key = "recipes-head") { RecipesHeader(ui, recipes) }
+    if (recipes.isEmpty()) {
+        item(key = "recipes-empty") { EmptyState("No recipes yet", "Links you save show up here for both of you.") }
+        return
+    }
+    val q = ui.query.trim().lowercase()
+    val shown = recipes.filter { r ->
+        (!ui.favouritesOnly || r.favourite) && (ui.tag == null || ui.tag in r.tags) &&
+            (q.isEmpty() || r.title.lowercase().contains(q) || r.site.lowercase().contains(q) ||
+                r.note.lowercase().contains(q) || r.tags.any { it.lowercase().contains(q) })
+    }
+    if (shown.isEmpty()) item(key = "recipes-none") { EmptyState("No matches", "Try another search or filter.") }
+    items(shown, key = { "recipe-" + it.id }) { r ->
+        RecipeCard(
+            r,
+            addedBy = vm.nameOf(r.addedBy),
+            onFavourite = { vm.recipes.toggleFavourite(r) },
+            onEdit = { ui.editing = r },
+            onRefresh = { vm.recipes.refreshPreview(r) },
+            onDelete = { vm.recipes.delete(r) },
+        )
+    }
+}
+
+@Composable
+private fun RecipesHeader(ui: RecipesUi, recipes: List<Recipe>) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        OutlinedButton(onClick = { adding = true }, modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = { ui.adding = true }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Add, null, Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text("Add a recipe link")
@@ -92,57 +124,41 @@ fun RecipesTab(vm: GymViewModel) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-
-        if (recipes.isEmpty()) {
-            EmptyState("No recipes yet", "Links you save show up here for both of you.")
-        } else {
+        if (recipes.isNotEmpty()) {
             OutlinedTextField(
-                value = query,
-                onValueChange = { query = it.take(40) },
+                value = ui.query,
+                onValueChange = { ui.query = it.take(40) },
                 placeholder = { Text("Search recipes") },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
-                trailingIcon = if (query.isNotEmpty()) ({ IconButton(onClick = { query = "" }) { Icon(Icons.Default.Close, "Clear search") } }) else null,
+                trailingIcon = if (ui.query.isNotEmpty()) ({ IconButton(onClick = { ui.query = "" }) { Icon(Icons.Default.Close, "Clear search") } }) else null,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            val tagsInUse = recipes.flatMap { it.tags }.distinct().sorted()
+            val tagsInUse = remember(recipes) { recipes.flatMap { it.tags }.distinct().sorted() }
             LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 item {
                     FilterChip(
-                        favouritesOnly,
-                        onClick = { favouritesOnly = !favouritesOnly },
+                        ui.favouritesOnly,
+                        onClick = { ui.favouritesOnly = !ui.favouritesOnly },
                         label = { Text("Favourites") },
                         leadingIcon = { Icon(Icons.Default.Star, null, Modifier.size(16.dp)) },
                     )
                 }
-                items(tagsInUse) { t -> FilterChip(tag == t, onClick = { tag = if (tag == t) null else t }, label = { Text(t) }) }
-            }
-            val q = query.trim().lowercase()
-            val shown = recipes.filter { r ->
-                (!favouritesOnly || r.favourite) && (tag == null || tag in r.tags) &&
-                    (q.isEmpty() || r.title.lowercase().contains(q) || r.site.lowercase().contains(q) ||
-                        r.note.lowercase().contains(q) || r.tags.any { it.lowercase().contains(q) })
-            }
-            if (shown.isEmpty()) EmptyState("No matches", "Try another search or filter.")
-            shown.forEach { r ->
-                RecipeCard(
-                    r,
-                    addedBy = vm.nameOf(r.addedBy),
-                    onFavourite = { vm.recipes.toggleFavourite(r) },
-                    onEdit = { editing = r },
-                    onRefresh = { vm.recipes.refreshPreview(r) },
-                    onDelete = { vm.recipes.delete(r) },
-                )
+                items(tagsInUse) { t -> FilterChip(ui.tag == t, onClick = { ui.tag = if (ui.tag == t) null else t }, label = { Text(t) }) }
             }
         }
     }
+}
 
-    if (adding) {
-        AddLinkDialog(onDismiss = { adding = false }, onAdd = { text -> adding = false; vm.recipes.addFromText(text) })
+/** The add-link and edit dialogs (shown above the Home screen). */
+@Composable
+fun RecipesDialogs(vm: GymViewModel, ui: RecipesUi, recipes: List<Recipe>) {
+    if (ui.adding) {
+        AddLinkDialog(onDismiss = { ui.adding = false }, onAdd = { text -> ui.adding = false; vm.recipes.addFromText(text) })
     }
-    editing?.let { r ->
+    ui.editing?.let { r ->
         val allTags = (RECIPE_TAG_SUGGESTIONS + recipes.flatMap { it.tags }).distinct()
-        EditRecipeDialog(r, allTags, onDismiss = { editing = null }, onSave = { editing = null; vm.recipes.save(it) })
+        EditRecipeDialog(r, allTags, onDismiss = { ui.editing = null }, onSave = { ui.editing = null; vm.recipes.save(it) })
     }
 }
 

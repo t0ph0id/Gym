@@ -85,6 +85,8 @@ fun HomeScreen(vm: GymViewModel) {
     val workouts by vm.workouts.collectAsState()
     val historyLimit by vm.historyLimit.collectAsState()
     val tab = vm.homeTab
+    val recipes by vm.recipes.list.collectAsState()
+    val recipesUi = rememberRecipesUi()
     var menuOpen by remember { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var gymFilter by rememberSaveable { mutableStateOf<String?>(null) }
@@ -206,7 +208,7 @@ fun HomeScreen(vm: GymViewModel) {
                     )
                 }
             } else if (tab == 3) {
-                item(key = "recipes") { RecipesTab(vm) }
+                recipesTab(vm, recipesUi, recipes)
             } else if (tab == 2) {
                 item {
                     // Collected only here, so progress records aren't synced while you're elsewhere.
@@ -244,6 +246,8 @@ fun HomeScreen(vm: GymViewModel) {
             }
         }
     }
+
+    RecipesDialogs(vm, recipesUi, recipes)
 
     pendingStart?.let { (preselected, onChosen) ->
         ChooseGymDialog(

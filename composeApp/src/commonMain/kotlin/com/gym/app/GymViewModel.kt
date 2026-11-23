@@ -471,6 +471,10 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
         back()
     }
 
+    override fun onCleared() {
+        recipes.close()
+    }
+
     // ---- helpers ----
 
     private fun task(block: suspend () -> Unit) = ctx.task(block)

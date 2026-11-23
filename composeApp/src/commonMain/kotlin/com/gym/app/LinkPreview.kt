@@ -29,7 +29,7 @@ fun parseLinkPreview(html: String, pageUrl: String): LinkPreview {
         val tag = m.value
         val key = attr(tag, "property") ?: attr(tag, "name") ?: return@forEach
         val content = attr(tag, "content") ?: return@forEach
-        meta.putIfAbsent(key.lowercase(), decodeEntities(content).trim())
+        meta.getOrPut(key.lowercase()) { decodeEntities(content).trim() } // first one wins
     }
     val titleTag = Regex("""<title[^>]*>(.*?)</title>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
         .find(head)?.groupValues?.get(1)?.let { decodeEntities(it).trim() }

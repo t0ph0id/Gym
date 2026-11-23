@@ -15,7 +15,14 @@ kotlin {
         minSdk = 26
         withHostTest {} // runs commonTest on the JVM (testAndroidHostTest)
     }
-    // iOS targets get added here when we build the iPhone version; all shared code lives in commonMain.
+    // iPhone: the shared code compiles to a framework that the (future) Xcode app wraps, the same way
+    // :androidApp wraps it on Android. Only the iOS "actual" bits live in iosMain.
+    listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
+        target.binaries.framework {
+            baseName = "ComposeApp"
+            isStatic = true
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -41,6 +48,9 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
+        }
+        iosMain.dependencies {
+            implementation("io.ktor:ktor-client-darwin:3.6.1") // network engine for Coil and link previews
         }
         androidMain.dependencies {
             implementation("androidx.activity:activity-compose:1.13.0") // BackHandler

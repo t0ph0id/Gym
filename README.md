@@ -9,7 +9,10 @@ and both log weights and reps, your own or each other's. Everything syncs live b
     exercises) live in `com.gym.app.state`.
   - `androidApp`: the thin Android app with MainActivity, Google sign-in, the photo picker, the rest
     alarm and notifications, the manifest, resources, `google-services.json` and the release settings.
-  An iPhone app would be a second thin wrapper next to it.
+  - `composeApp/src/iosMain`: the few iPhone-specific bits (secure random numbers, no wallpaper
+    colours). The shared code already compiles for iPhone (`iosArm64`, `iosSimulatorArm64`) into a
+    `ComposeApp` framework, so an Xcode app only has to wrap it, like `androidApp` does on Android.
+    Check it still compiles with `./gradlew :composeApp:compileKotlinIosSimulatorArm64`.
 - **Sync:** Firebase Firestore through the [GitLive Firebase Kotlin SDK](https://github.com/GitLiveApp/firebase-kotlin-sdk).
   It updates live and works offline. Changes made with no signal upload when you're back online.
 - **Accounts:** Sign in with Google through Android's Credential Manager and Firebase Auth. Your pair

@@ -20,7 +20,13 @@ class Recipes internal constructor(
 ) {
     val list: StateFlow<List<Recipe>> = ctx.perPair(emptyList()) { ctx.repo.recipes(it) }
 
-    private val http by lazy { HttpClient() }
+    private val httpDelegate = lazy { HttpClient() }
+    private val http by httpDelegate
+
+    /** Frees the web client used for link previews (when the view model goes away). */
+    fun close() {
+        if (httpDelegate.isInitialized()) http.close()
+    }
 
     /**
      * Saves the first link in [text] (as shared from Chrome, Instagram, ...) straight away, then
