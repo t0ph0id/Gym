@@ -96,6 +96,8 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
     var confirmFinish by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var addingExercise by remember { mutableStateOf(false) }
+    /** true = adding to the warm-up, false = the cool-down. */
+    var addingCircuit by remember { mutableStateOf<Boolean?>(null) }
     var choosingGym by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
     var repeating by remember { mutableStateOf(false) }
@@ -218,7 +220,15 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                     item { WorkoutSummary(vm, workout, sets, members) }
                 }
                 if (!workout.warmUp.isEmpty) {
-                    item(key = "warmUp") { CircuitCard("Warm-up", workout.warmUp) }
+                    item(key = "warmUp") {
+                        if (active) {
+                            CircuitEditor("Warm-up", "No moves left.", workout.warmUp, onChange = { vm.updateCircuit(workout, true, it) }) {
+                                addingCircuit = true
+                            }
+                        } else {
+                            CircuitCard("Warm-up", workout.warmUp)
+                        }
+                    }
                 }
                 if (workout.exercises.isEmpty()) {
                     item { EmptyState("No exercises yet", "Pick from the catalogue below.") }
@@ -242,14 +252,43 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                     )
                 }
                 item {
-                    OutlinedButton(onClick = { addingExercise = true }, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Add exercise")
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        OutlinedButton(onClick = { addingExercise = true }, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Add exercise")
+                        }
+                        // Sections the plan didn't have can still be added while training.
+                        if (active && (workout.warmUp.isEmpty || workout.mobility.isEmpty)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (workout.warmUp.isEmpty) {
+                                    OutlinedButton(onClick = { addingCircuit = true }, modifier = Modifier.weight(1f)) {
+                                        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("Warm-up")
+                                    }
+                                }
+                                if (workout.mobility.isEmpty) {
+                                    OutlinedButton(onClick = { addingCircuit = false }, modifier = Modifier.weight(1f)) {
+                                        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("Cool-down")
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 if (!workout.mobility.isEmpty) {
-                    item(key = "mobility") { CircuitCard("Mobility", workout.mobility) }
+                    item(key = "mobility") {
+                        if (active) {
+                            CircuitEditor("Cool-down", "No moves left.", workout.mobility, onChange = { vm.updateCircuit(workout, false, it) }) {
+                                addingCircuit = false
+                            }
+                        } else {
+                            CircuitCard("Cool-down", workout.mobility)
+                        }
+                    }
                 }
             }
             }
@@ -329,6 +368,21 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
             confirmLabel = "Save",
             onDismiss = { choosingGym = false },
             onChoose = { choosingGym = false; vm.changeWorkoutGym(workout, sets, it) },
+        )
+    }
+    val circuitTarget = addingCircuit
+    if (circuitTarget != null && workout != null) {
+        val current = if (circuitTarget) workout.warmUp else workout.mobility
+        ExercisePicker(
+            vm = vm,
+            alreadyAdded = current.exercises.map(::exerciseKey).toSet(),
+            mobility = true,
+            title = if (circuitTarget) "Add to warm-up" else "Add to cool-down",
+            onDismiss = { addingCircuit = null },
+            onAdd = { names ->
+                addingCircuit = null
+                vm.updateCircuit(workout, circuitTarget, current.copy(exercises = current.exercises + names))
+            },
         )
     }
     if (addingExercise && workout != null) {

@@ -13,6 +13,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -32,14 +46,20 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gym.app.CatalogExercise
 import com.gym.app.Circuit
+import com.gym.app.WarmUpKind
 
-/** "4 moves · 3 rounds" */
+/** "4 moves · 3 rounds · 10 min" */
 fun Circuit.summary(): String =
-    (if (exercises.size == 1) "1 move" else "${exercises.size} moves") + if (rounds > 1) " · $rounds rounds" else ""
+    (if (exercises.size == 1) "1 move" else "${exercises.size} moves") +
+        (if (rounds > 1) " · $rounds rounds" else "") +
+        (if (totalMinutes > 0) " · $totalMinutes min" else "")
+
+/** Moves that get a minutes button: cardio, and your own moves (which have no kind). */
+private fun timed(entry: CatalogExercise?): Boolean = entry?.kind == null || entry.kind == WarmUpKind.Cardio
 
 /**
- * A plan's Warm-up or Mobility section: its moves (in circuit order) and how many rounds. Empty, it's
- * just an "Add" button so plans without one stay tidy.
+ * A Warm-up or Cool-down section, in a plan or a running workout: its moves (in circuit order), how
+ * many rounds, and minutes for cardio. Empty, it's just an "Add" button so it stays tidy.
  */
 @Composable
 fun CircuitEditor(title: String, hint: String, circuit: Circuit, onChange: (Circuit) -> Unit, onAdd: () -> Unit) {
@@ -51,13 +71,11 @@ fun CircuitEditor(title: String, hint: String, circuit: Circuit, onChange: (Circ
             } else {
                 Stepper("Rounds", circuit.rounds, 1..10) { onChange(circuit.copy(rounds = it)) }
                 circuit.exercises.forEachIndexed { i, name ->
-                    CircuitRow(name) {
+                    CircuitRow(name, circuit.minutesFor(name), onMinutes = { onChange(circuit.withMinutes(name, it)) }) {
                         if (i > 0) IconButton(onClick = {
                             onChange(circuit.copy(exercises = circuit.exercises.toMutableList().apply { add(i - 1, removeAt(i)) }))
                         }) { Icon(Icons.Default.ArrowUpward, "Move $name up") }
-                        IconButton(onClick = {
-                            onChange(circuit.copy(exercises = circuit.exercises.filterIndexed { j, _ -> j != i }))
-                        }) { Icon(Icons.Default.Close, "Remove $name") }
+                        IconButton(onClick = { onChange(circuit.without(i)) }) { Icon(Icons.Default.Close, "Remove $name") }
                     }
                 }
             }
@@ -70,7 +88,7 @@ fun CircuitEditor(title: String, hint: String, circuit: Circuit, onChange: (Circ
     }
 }
 
-/** A workout's Warm-up or Mobility: the moves to go through, each with its photo and how-to. */
+/** A finished workout's Warm-up or Cool-down: the moves, each with its photo, how-to and minutes. */
 @Composable
 fun CircuitCard(title: String, circuit: Circuit) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
@@ -85,16 +103,20 @@ fun CircuitCard(title: String, circuit: Circuit) {
                     )
                 }
             }
-            circuit.exercises.forEach { CircuitRow(it) {} }
+            circuit.exercises.forEach { CircuitRow(it, circuit.minutesFor(it), onMinutes = null) {} }
         }
     }
 }
 
-/** One move: photo (tap for how-to) and name, plus any [actions] on the right. */
+/**
+ * One move: photo (tap for how-to), name and minutes, plus any [actions] on the right. With
+ * [onMinutes], cardio moves get a button to set their minutes.
+ */
 @Composable
-private fun CircuitRow(name: String, actions: @Composable () -> Unit) {
+private fun CircuitRow(name: String, minutes: Int?, onMinutes: ((Int?) -> Unit)?, actions: @Composable () -> Unit) {
     val entry: CatalogExercise? = findExercise(name)
     var showDetails by remember { mutableStateOf(false) }
+    var editingMinutes by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth()
             .then(if (entry != null) Modifier.clickable { showDetails = true } else Modifier)
@@ -105,11 +127,61 @@ private fun CircuitRow(name: String, actions: @Composable () -> Unit) {
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            entry?.kind?.let {
-                Text(it.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            val info = listOfNotNull(entry?.kind?.label, minutes?.takeIf { onMinutes == null }?.let { "$it min" })
+            if (info.isNotEmpty()) {
+                Text(info.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (onMinutes != null && (minutes != null || timed(entry))) {
+            TextButton(onClick = { editingMinutes = true }, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                if (minutes == null) {
+                    Icon(Icons.Default.Timer, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("min")
+                } else {
+                    Text("$minutes min", fontWeight = FontWeight.SemiBold)
+                }
             }
         }
         actions()
     }
     if (showDetails && entry != null) ExerciseDetailDialog(entry, onDismiss = { showDetails = false })
+    if (editingMinutes && onMinutes != null) {
+        MinutesDialog(name, minutes, onDismiss = { editingMinutes = false }) { editingMinutes = false; onMinutes(it) }
+    }
+}
+
+/** How many minutes on the elliptical (etc.): type it or pick a common one. Clear removes it. */
+@Composable
+private fun MinutesDialog(name: String, minutes: Int?, onDismiss: () -> Unit, onSave: (Int?) -> Unit) {
+    var text by remember { mutableStateOf(TextFieldValue(minutes?.toString().orEmpty(), TextRange(0, minutes?.toString()?.length ?: 0))) }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    val value = text.text.toIntOrNull()?.takeIf { it in 1..300 }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(name) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { v -> text = v.copy(text = v.text.filter(Char::isDigit).take(3)) },
+                    label = { Text("Minutes") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { if (value != null) onSave(value) }),
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(5, 10, 15, 20, 30).forEach { m ->
+                        SuggestionChip(onClick = { onSave(m) }, label = { Text("$m") })
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSave(value) }, enabled = value != null) { Text("Save") } },
+        dismissButton = {
+            TextButton(onClick = { if (minutes != null) onSave(null) else onDismiss() }) { Text(if (minutes != null) "Clear" else "Cancel") }
+        },
+    )
 }

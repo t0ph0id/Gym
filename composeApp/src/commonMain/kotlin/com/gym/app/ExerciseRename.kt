@@ -26,12 +26,15 @@ fun LastWeights.renamed(oldName: String, newName: String) = LastWeights(
 private fun String.isExercise(name: String) = exerciseKey(this) == exerciseKey(name)
 
 private fun Circuit.renamed(oldName: String, newName: String) =
-    copy(exercises = exercises.map { if (it.isExercise(oldName)) newName else it })
+    copy(
+        exercises = exercises.map { if (it.isExercise(oldName)) newName else it },
+        minutes = minutes.mapKeys { if (it.key == exerciseKey(oldName)) exerciseKey(newName) else it.key },
+    )
 
 private fun Circuit.has(name: String) = exercises.any { it.isExercise(name) }
 
 /**
- * The workout with the exercise renamed (exercise list, personal bests, warm-up and mobility), or
+ * The workout with the exercise renamed (exercise list, personal bests, warm-up and cool-down), or
  * null if it isn't in it.
  */
 fun Workout.renamed(oldName: String, newName: String): Workout? {

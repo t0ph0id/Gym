@@ -120,3 +120,28 @@ class JustMeTest {
         assertEquals(emptyList(), repeatOf(source, "new2", "home", null, 1L) { "id${n++}" }.people)
     }
 }
+
+class CircuitMinutesTest {
+    private val c = Circuit(listOf("Elliptical", "Leg swings"), rounds = 2)
+
+    @Test
+    fun minutesAreKeyedByNameAndTotalled() {
+        val timed = c.withMinutes("Elliptical", 10)
+        assertEquals(10, timed.minutesFor("elliptical"))
+        assertEquals(20, timed.totalMinutes)
+        assertEquals(null, timed.withMinutes("Elliptical", null).minutesFor("Elliptical"))
+    }
+
+    @Test
+    fun removingAMoveDropsItsMinutes() {
+        val removed = c.withMinutes("Elliptical", 10).without(0)
+        assertEquals(listOf("Leg swings"), removed.exercises)
+        assertEquals(emptyMap(), removed.minutes)
+    }
+
+    @Test
+    fun renameMovesMinutes() {
+        val w = Workout(warmUp = Circuit(listOf("My bike")).withMinutes("My bike", 8))
+        assertEquals(8, w.renamed("My bike", "Air bike")!!.warmUp.minutesFor("Air bike"))
+    }
+}

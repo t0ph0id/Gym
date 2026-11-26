@@ -459,6 +459,12 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
         }
     }
 
+    /** Saves a workout's warm-up ([warmUp] true) or cool-down, e.g. moves added or minutes logged mid-workout. */
+    fun updateCircuit(workout: Workout, warmUp: Boolean, circuit: Circuit) {
+        val pid = currentPid
+        task { repo.updateWorkout(pid, workout.id) { (if (warmUp) "warmUp" else "mobility").to(Circuit.serializer(), circuit) } }
+    }
+
     fun renameWorkout(workout: Workout, name: String) {
         val clean = name.trim().take(40)
         if (clean.isEmpty() || clean == workout.name) return

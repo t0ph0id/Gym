@@ -75,15 +75,34 @@ data class PlanExercise(
 )
 
 /**
- * A plan's Warm-up or Mobility section: a list of moves (exercise names, usually from
- * [MobilityCatalog]) done as a circuit, [rounds] times. Nothing is logged for them.
+ * A plan's or workout's Warm-up or Cool-down section: a list of moves (exercise names, usually from
+ * [MobilityCatalog]) done as a circuit, [rounds] times. Only minutes are logged for them (cardio).
  */
 @Serializable
 data class Circuit(
     val exercises: List<String> = emptyList(),
     val rounds: Int = 1,
+    /** Minutes per move, keyed by [exerciseKey] of its name; e.g. "elliptical" -> 10. Mostly cardio. */
+    val minutes: Map<String, Int> = emptyMap(),
 ) {
     val isEmpty: Boolean get() = exercises.isEmpty()
+
+    fun minutesFor(name: String): Int? = minutes[exerciseKey(name)]
+
+    /** With [name]'s minutes set, or cleared when null. */
+    fun withMinutes(name: String, value: Int?): Circuit =
+        copy(minutes = if (value == null) minutes - exerciseKey(name) else minutes + (exerciseKey(name) to value))
+
+    /** Without the move at [index] (and its minutes, unless the same move is in it twice). */
+    fun without(index: Int): Circuit {
+        val name = exercises.getOrNull(index) ?: return this
+        val rest = exercises.filterIndexed { i, _ -> i != index }
+        val key = exerciseKey(name)
+        return copy(exercises = rest, minutes = if (rest.any { exerciseKey(it) == key }) minutes else minutes - key)
+    }
+
+    /** Minutes over all rounds. */
+    val totalMinutes: Int get() = exercises.sumOf { minutesFor(it) ?: 0 } * rounds
 }
 
 @Serializable

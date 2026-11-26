@@ -139,7 +139,7 @@ fun PlanEditorScreen(vm: GymViewModel, planId: String?) {
             item(key = "warmUp") {
                 CircuitEditor(
                     title = "Warm-up",
-                    hint = "Moves to do before the exercises, e.g. bike, leg swings, hip circles.",
+                    hint = "Moves to do before the exercises, e.g. bike, leg swings, hip circles. Cardio can have minutes.",
                     circuit = warmUp,
                     onChange = { warmUp = it },
                     onAdd = { pickingCircuit = "warmUp" },
@@ -169,8 +169,8 @@ fun PlanEditorScreen(vm: GymViewModel, planId: String?) {
             }
             item(key = "mobility") {
                 CircuitEditor(
-                    title = "Mobility",
-                    hint = "Moves to do after the exercises, e.g. stretches or foam rolling.",
+                    title = "Cool-down",
+                    hint = "Moves to do after the exercises, e.g. stretches, foam rolling or an easy walk.",
                     circuit = mobility,
                     onChange = { mobility = it },
                     onAdd = { pickingCircuit = "mobility" },
@@ -185,7 +185,7 @@ fun PlanEditorScreen(vm: GymViewModel, planId: String?) {
             vm = vm,
             alreadyAdded = current.exercises.map(::exerciseKey).toSet(),
             mobility = true,
-            title = if (which == "warmUp") "Add to warm-up" else "Add to mobility",
+            title = if (which == "warmUp") "Add to warm-up" else "Add to cool-down",
             onDismiss = { pickingCircuit = null },
             onAdd = { names ->
                 pickingCircuit = null

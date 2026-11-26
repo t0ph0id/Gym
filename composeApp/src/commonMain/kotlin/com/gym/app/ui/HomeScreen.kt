@@ -372,7 +372,7 @@ private fun PlanCard(plan: Plan, canStart: Boolean, onStart: () -> Unit, onEdit:
             )
             listOfNotNull(
                 plan.warmUp.takeUnless { it.isEmpty }?.let { "Warm-up: ${it.summary()}" },
-                plan.mobility.takeUnless { it.isEmpty }?.let { "Mobility: ${it.summary()}" },
+                plan.mobility.takeUnless { it.isEmpty }?.let { "Cool-down: ${it.summary()}" },
             ).takeIf { it.isNotEmpty() }?.let {
                 Text(
                     it.joinToString("  ·  "),
