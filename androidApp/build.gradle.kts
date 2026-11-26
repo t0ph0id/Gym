@@ -47,6 +47,9 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
     implementation("com.google.firebase:firebase-firestore") // wiping the offline cache on sign-out
 
+    // Reading cardio sessions (e.g. from a Fitbit) to fill in warm-up minutes
+    implementation("androidx.health.connect:connect-client:1.1.0")
+
     // Google sign-in via Android's Credential Manager (system account picker)
     implementation("androidx.credentials:credentials:1.6.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.6.0")

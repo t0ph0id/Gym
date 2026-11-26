@@ -59,6 +59,28 @@ interface AppPlatform {
     /** Text shared into Gym from another app (e.g. a recipe link), until [consumeSharedText]. */
     val sharedText: kotlinx.coroutines.flow.StateFlow<String?>
     fun consumeSharedText()
+
+    /** Whether this phone has a health store to read workouts from (Health Connect on Android). */
+    val canReadHealth: Boolean get() = false
+
+    /**
+     * Exercise sessions (e.g. from a Fitbit) that overlap [from]..[to], newest first. With [ask], asks
+     * for permission if it isn't granted yet. null = not allowed (or not available).
+     */
+    suspend fun healthSessions(from: Long, to: Long, ask: Boolean): List<HealthSession>? = null
+}
+
+/** One exercise session from the phone's health data, e.g. 12 minutes on the elliptical. */
+data class HealthSession(val title: String, val start: Long, val end: Long, val source: String?) {
+    /** Rounded to the nearest minute, at least 1. */
+    val minutes: Int get() = ((end - start + 30_000) / 60_000).toInt().coerceAtLeast(1)
+}
+
+/** e.g. "18:05" */
+@OptIn(ExperimentalTime::class)
+fun formatTime(millis: Long): String {
+    val dt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
+    return dt.hour.toString().padStart(2, '0') + ":" + dt.minute.toString().padStart(2, '0')
 }
 
 private const val ID_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

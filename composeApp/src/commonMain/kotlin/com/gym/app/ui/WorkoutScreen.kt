@@ -184,6 +184,8 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
             else -> {
                 // Grouped once per change, not filtered again by every card.
                 val setsByExercise = remember(sets) { sets.groupBy { it.exerciseId } }
+                // Cardio done up to 3 hours before starting the workout in the app still counts.
+                val healthWindow = (workout.startedAt - 3 * 60 * 60_000L)..(workout.finishedAt ?: Long.MAX_VALUE)
                 // Lazy index of the first exercise card: gym line, summary (finished), warm-up.
                 val firstCard = 1 + (if (!active) 1 else 0) + (if (!workout.warmUp.isEmpty) 1 else 0)
                 LazyColumn(
@@ -222,7 +224,7 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                 if (!workout.warmUp.isEmpty) {
                     item(key = "warmUp") {
                         if (active) {
-                            CircuitEditor("Warm-up", "No moves left.", workout.warmUp, onChange = { vm.updateCircuit(workout, true, it) }) {
+                            CircuitEditor("Warm-up", "No moves left.", workout.warmUp, onChange = { vm.updateCircuit(workout, true, it) }, healthWindow = healthWindow) {
                                 addingCircuit = true
                             }
                         } else {
@@ -282,7 +284,7 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                 if (!workout.mobility.isEmpty) {
                     item(key = "mobility") {
                         if (active) {
-                            CircuitEditor("Cool-down", "No moves left.", workout.mobility, onChange = { vm.updateCircuit(workout, false, it) }) {
+                            CircuitEditor("Cool-down", "No moves left.", workout.mobility, onChange = { vm.updateCircuit(workout, false, it) }, healthWindow = healthWindow) {
                                 addingCircuit = false
                             }
                         } else {

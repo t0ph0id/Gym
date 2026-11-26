@@ -18,6 +18,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
+import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.PermissionController
+import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.request.ReadRecordsRequest
+import androidx.health.connect.client.time.TimeRangeFilter
+import java.time.Instant
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.firestore.FirebaseFirestore
 import java.io.ByteArrayOutputStream
@@ -27,6 +34,64 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class AndroidAppPlatform(private val activity: ComponentActivity) : AppPlatform {
+
+    // ---- Health Connect: exercise sessions (e.g. from a Fitbit) for cardio minutes ----
+
+    private val exercisePermission = HealthPermission.getReadPermission(ExerciseSessionRecord::class)
+    private var pendingHealth: CompletableDeferred<Set<String>>? = null
+    private val askHealth = activity.registerForActivityResult(PermissionController.createRequestPermissionResultContract()) {
+        pendingHealth?.complete(it)
+    }
+
+    override val canReadHealth: Boolean
+        get() = HealthConnectClient.getSdkStatus(activity) == HealthConnectClient.SDK_AVAILABLE
+
+    override suspend fun healthSessions(from: Long, to: Long, ask: Boolean): List<HealthSession>? {
+        if (!canReadHealth) return null
+        val client = HealthConnectClient.getOrCreate(activity)
+        val granted = runCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
+        if (exercisePermission !in granted) {
+            if (!ask) return null
+            val result = CompletableDeferred<Set<String>>()
+            pendingHealth = result
+            askHealth.launch(setOf(exercisePermission))
+            if (exercisePermission !in result.await()) return null
+        }
+        return runCatching {
+            client.readRecords(
+                ReadRecordsRequest(ExerciseSessionRecord::class, TimeRangeFilter.between(Instant.ofEpochMilli(from), Instant.ofEpochMilli(to))),
+            ).records.map { r ->
+                HealthSession(
+                    title = r.title?.takeIf { it.isNotBlank() } ?: exerciseName(r.exerciseType),
+                    start = r.startTime.toEpochMilli(),
+                    end = r.endTime.toEpochMilli(),
+                    source = appName(r.metadata.dataOrigin.packageName),
+                )
+            }.sortedByDescending { it.start }
+        }.getOrElse { emptyList() }
+    }
+
+    private fun exerciseName(type: Int): String = when (type) {
+        ExerciseSessionRecord.EXERCISE_TYPE_ELLIPTICAL -> "Elliptical"
+        ExerciseSessionRecord.EXERCISE_TYPE_STAIR_CLIMBING_MACHINE -> "Stair climber"
+        ExerciseSessionRecord.EXERCISE_TYPE_STAIR_CLIMBING -> "Stairs"
+        ExerciseSessionRecord.EXERCISE_TYPE_BIKING_STATIONARY -> "Exercise bike"
+        ExerciseSessionRecord.EXERCISE_TYPE_BIKING -> "Cycling"
+        ExerciseSessionRecord.EXERCISE_TYPE_ROWING_MACHINE -> "Rowing machine"
+        ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL -> "Treadmill"
+        ExerciseSessionRecord.EXERCISE_TYPE_RUNNING -> "Run"
+        ExerciseSessionRecord.EXERCISE_TYPE_WALKING -> "Walk"
+        ExerciseSessionRecord.EXERCISE_TYPE_HIGH_INTENSITY_INTERVAL_TRAINING -> "HIIT"
+        ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING -> "Strength training"
+        ExerciseSessionRecord.EXERCISE_TYPE_WEIGHTLIFTING -> "Weightlifting"
+        else -> "Workout"
+    }
+
+    /** "Fitbit" for com.fitbit.FitbitMobile, etc.: the app's own name, if it's installed. */
+    private fun appName(pkg: String): String? = runCatching {
+        val pm = activity.packageManager
+        pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+    }.getOrNull()
 
     // ---- photos: system photo picker (no permission needed) or the camera app ----
 
