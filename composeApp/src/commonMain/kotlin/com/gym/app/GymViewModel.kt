@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -307,6 +308,8 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
             repo.workout(currentPid, wid).map { Found(it) }
                 // The brand-new workout may not be in the local cache for the very first snapshot.
                 .filter { it.value != null || wid != justStarted }
+                // Once it's there, a later "gone" is real (e.g. your partner discarded it).
+                .onEach { if (it.value != null && wid == justStarted) justStarted = null }
                 .safe(Found(null))
         }
 
