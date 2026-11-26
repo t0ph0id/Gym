@@ -9,6 +9,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
+import com.gym.app.LocalAppPlatform
+import com.gym.app.visitRange
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import com.gym.app.ChartRange
 import com.gym.app.Metric
 import com.gym.app.nowMillis
@@ -338,15 +344,18 @@ fun WorkoutSummary(vm: GymViewModel, workout: Workout, sets: List<WorkoutSet>, m
             )
             members.forEach { m ->
                 val theirs = sets.filter { it.uid == m }
-                if (theirs.isEmpty()) return@forEach // e.g. they hadn't joined the pair yet
+                // Skipped when they have nothing here (e.g. they hadn't joined the pair yet); my own line
+                // stays for a cardio-only workout, to add my watch's figures.
+                if (theirs.isEmpty() && m != vm.uid && workout.health[m] == null) return@forEach
                 val counted = theirs.filter { it.done } // only ticked sets were actually done
                 val volume = counted.sumOf { (it.weight ?: 0.0) * (it.reps ?: 0) }
                 val accent = if (m == vm.uid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
                 Text(
-                    "${vm.nameOf(m)}: ${setsLabel(counted.size)} · ${formatVolume(volume)}",
+                    vm.nameOf(m) + if (theirs.isEmpty()) "" else ": ${setsLabel(counted.size)} · ${formatVolume(volume)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = accent,
                 )
+                WatchFigures(vm, workout, m, accent)
                 workout.prs[m]?.takeIf { it.isNotEmpty() }?.let { names ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.EmojiEvents, null, Modifier.size(16.dp), tint = accent)
@@ -357,4 +366,50 @@ fun WorkoutSummary(vm: GymViewModel, workout: Workout, sets: List<WorkoutSet>, m
             }
         }
     }
+}
+
+/**
+ * One person's calories and heart rate for the whole visit, from their watch. On my own line,
+ * a button fetches (or refreshes) them from Health Connect.
+ */
+@Composable
+private fun WatchFigures(vm: GymViewModel, workout: Workout, member: String, accent: androidx.compose.ui.graphics.Color) {
+    val stats = workout.health[member]
+    val mine = member == vm.uid
+    val platform = LocalAppPlatform.current
+    val canRead = mine && remember { platform.canReadHealth }
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var note by remember { mutableStateOf<String?>(null) }
+    fun fetch() {
+        val end = workout.finishedAt ?: return
+        busy = true; note = null
+        scope.launch {
+            val margin = 30 * 60_000L
+            val sessions = platform.healthSessions(workout.startedAt - margin, end + margin, ask = true)
+            if (sessions == null) {
+                note = "Gym isn't allowed to read Health Connect."
+            } else {
+                val range = visitRange(workout.startedAt, end, sessions, margin)
+                val found = platform.healthStats(range.first, range.last)
+                if (found == null || found.isEmpty) note = "Nothing from your watch yet. It can take a few minutes to sync."
+                else vm.saveWorkoutHealth(workout, found)
+            }
+            busy = false
+        }
+    }
+    if (stats == null && !canRead) return
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Default.FavoriteBorder, null, Modifier.size(16.dp), tint = accent)
+        Spacer(Modifier.width(4.dp))
+        Text(
+            stats?.label(withMax = true) ?: "Calories & heart rate",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f),
+        )
+        if (canRead) {
+            TextButton(onClick = ::fetch, enabled = !busy) { Text(if (stats == null) "Add from Fitbit" else "Update") }
+        }
+    }
+    note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 }

@@ -145,3 +145,30 @@ class CircuitMinutesTest {
         assertEquals(8, w.renamed("My bike", "Air bike")!!.warmUp.minutesFor("Air bike"))
     }
 }
+
+class HealthFiguresTest {
+    private val stats = HealthStats(kcal = 48, avgBpm = 132, maxBpm = 150)
+
+    @Test
+    fun pickedSessionKeepsFiguresAndTypingDropsThem() {
+        val c = Circuit(listOf("Elliptical")).withMinutes("Elliptical", 5, stats)
+        assertEquals(stats, c.healthFor("Elliptical"))
+        assertEquals("48 kcal · avg 132 bpm", c.healthFor("Elliptical")!!.label())
+        assertEquals("48 kcal · avg 132 bpm · max 150", stats.label(withMax = true))
+        val typed = c.withMinutes("Elliptical", 7)
+        assertEquals(7, typed.minutesFor("Elliptical"))
+        assertNull(typed.healthFor("Elliptical"))
+        assertTrue(c.without(0).health.isEmpty())
+    }
+
+    @Test
+    fun visitStretchesToNearbyWatchSessions() {
+        val min = 60_000L
+        val warmUp = HealthSession("Elliptical", start = 0, end = 5 * min, source = null)
+        val morningRun = HealthSession("Run", start = -300 * min, end = -270 * min, source = null)
+        val coolDown = HealthSession("Rowing", start = 70 * min, end = 75 * min, source = null)
+        // Workout started in the app 10 min after the warm-up began, finished at 65 min.
+        assertEquals(0L..75 * min, visitRange(10 * min, 65 * min, listOf(warmUp, morningRun, coolDown)))
+        assertEquals(10 * min..65 * min, visitRange(10 * min, 65 * min, emptyList()))
+    }
+}

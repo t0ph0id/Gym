@@ -29,6 +29,7 @@ private fun Circuit.renamed(oldName: String, newName: String) =
     copy(
         exercises = exercises.map { if (it.isExercise(oldName)) newName else it },
         minutes = minutes.mapKeys { if (it.key == exerciseKey(oldName)) exerciseKey(newName) else it.key },
+        health = health.mapKeys { if (it.key == exerciseKey(oldName)) exerciseKey(newName) else it.key },
     )
 
 private fun Circuit.has(name: String) = exercises.any { it.isExercise(name) }

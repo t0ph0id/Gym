@@ -224,7 +224,7 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                 if (!workout.warmUp.isEmpty) {
                     item(key = "warmUp") {
                         if (active) {
-                            CircuitEditor("Warm-up", "No moves left.", workout.warmUp, onChange = { vm.updateCircuit(workout, true, it) }, healthWindow = healthWindow) {
+                            CircuitEditor("Warm-up", "No moves left.", workout.warmUp, onChange = { vm.updateCircuit(workout, true, it) }, healthWindow = healthWindow, healthUid = vm.uid) {
                                 addingCircuit = true
                             }
                         } else {
@@ -284,7 +284,7 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                 if (!workout.mobility.isEmpty) {
                     item(key = "mobility") {
                         if (active) {
-                            CircuitEditor("Cool-down", "No moves left.", workout.mobility, onChange = { vm.updateCircuit(workout, false, it) }, healthWindow = healthWindow) {
+                            CircuitEditor("Cool-down", "No moves left.", workout.mobility, onChange = { vm.updateCircuit(workout, false, it) }, healthWindow = healthWindow, healthUid = vm.uid) {
                                 addingCircuit = false
                             }
                         } else {

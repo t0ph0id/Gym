@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import com.gym.app.CatalogExercise
 import com.gym.app.Circuit
 import com.gym.app.HealthSession
+import com.gym.app.HealthStats
 import com.gym.app.LocalAppPlatform
 import com.gym.app.WarmUpKind
 import com.gym.app.formatTime
@@ -77,6 +78,8 @@ fun CircuitEditor(
     onChange: (Circuit) -> Unit,
     /** In a workout: when to look for sessions in Health Connect (e.g. from a Fitbit) for the minutes. */
     healthWindow: LongRange? = null,
+    /** Whose watch figures are saved when a session is picked (me). */
+    healthUid: String = "",
     onAdd: () -> Unit,
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
@@ -87,7 +90,13 @@ fun CircuitEditor(
             } else {
                 Stepper("Rounds", circuit.rounds, 1..10) { onChange(circuit.copy(rounds = it)) }
                 circuit.exercises.forEachIndexed { i, name ->
-                    CircuitRow(name, circuit.minutesFor(name), healthWindow, onMinutes = { onChange(circuit.withMinutes(name, it)) }) {
+                    CircuitRow(
+                        name,
+                        circuit.minutesFor(name),
+                        circuit.healthFor(name),
+                        healthWindow,
+                        onMinutes = { m, stats -> onChange(circuit.withMinutes(name, m, stats?.copy(uid = healthUid))) },
+                    ) {
                         if (i > 0) IconButton(onClick = {
                             onChange(circuit.copy(exercises = circuit.exercises.toMutableList().apply { add(i - 1, removeAt(i)) }))
                         }) { Icon(Icons.Default.ArrowUpward, "Move $name up") }
@@ -119,7 +128,7 @@ fun CircuitCard(title: String, circuit: Circuit) {
                     )
                 }
             }
-            circuit.exercises.forEach { CircuitRow(it, circuit.minutesFor(it), null, onMinutes = null) {} }
+            circuit.exercises.forEach { CircuitRow(it, circuit.minutesFor(it), circuit.healthFor(it), null, onMinutes = null) {} }
         }
     }
 }
@@ -132,8 +141,9 @@ fun CircuitCard(title: String, circuit: Circuit) {
 private fun CircuitRow(
     name: String,
     minutes: Int?,
+    health: HealthStats?,
     healthWindow: LongRange?,
-    onMinutes: ((Int?) -> Unit)?,
+    onMinutes: ((Int?, HealthStats?) -> Unit)?,
     actions: @Composable () -> Unit,
 ) {
     val entry: CatalogExercise? = findExercise(name)
@@ -149,7 +159,11 @@ private fun CircuitRow(
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            val info = listOfNotNull(entry?.kind?.label, minutes?.takeIf { onMinutes == null }?.let { "$it min" })
+            val info = listOfNotNull(
+                entry?.kind?.label,
+                minutes?.takeIf { onMinutes == null }?.let { "$it min" },
+                health?.label()?.takeIf { it.isNotEmpty() },
+            )
             if (info.isNotEmpty()) {
                 Text(info.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -169,7 +183,7 @@ private fun CircuitRow(
     }
     if (showDetails && entry != null) ExerciseDetailDialog(entry, onDismiss = { showDetails = false })
     if (editingMinutes && onMinutes != null) {
-        MinutesDialog(name, minutes, healthWindow, onDismiss = { editingMinutes = false }) { editingMinutes = false; onMinutes(it) }
+        MinutesDialog(name, minutes, healthWindow, onDismiss = { editingMinutes = false }) { m, stats -> editingMinutes = false; onMinutes(m, stats) }
     }
 }
 
@@ -178,7 +192,7 @@ private fun CircuitRow(
  * from Health Connect, e.g. what a Fitbit recorded. Clear removes it.
  */
 @Composable
-private fun MinutesDialog(name: String, minutes: Int?, healthWindow: LongRange?, onDismiss: () -> Unit, onSave: (Int?) -> Unit) {
+private fun MinutesDialog(name: String, minutes: Int?, healthWindow: LongRange?, onDismiss: () -> Unit, onSave: (Int?, HealthStats?) -> Unit) {
     val platform = LocalAppPlatform.current
     val useHealth = healthWindow != null && remember { platform.canReadHealth }
     val scope = rememberCoroutineScope()
@@ -206,12 +220,12 @@ private fun MinutesDialog(name: String, minutes: Int?, healthWindow: LongRange?,
                     label = { Text("Minutes") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { if (value != null) onSave(value) }),
+                    keyboardActions = KeyboardActions(onDone = { if (value != null) onSave(value, null) }),
                     modifier = Modifier.fillMaxWidth().focusRequester(focus),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(5, 10, 15, 20, 30).forEach { m ->
-                        SuggestionChip(onClick = { onSave(m) }, label = { Text("$m") })
+                        SuggestionChip(onClick = { onSave(m, null) }, label = { Text("$m") })
                     }
                 }
                 if (useHealth) {
@@ -220,14 +234,14 @@ private fun MinutesDialog(name: String, minutes: Int?, healthWindow: LongRange?,
                         allowed = healthAllowed,
                         since = healthWindow!!.first,
                         onConnect = { scope.launch { load(ask = true) } },
-                        onPick = { onSave(it.minutes) },
+                        onPick = { onSave(it.minutes, it.stats) },
                     )
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(value) }, enabled = value != null) { Text("Save") } },
+        confirmButton = { TextButton(onClick = { onSave(value, null) }, enabled = value != null) { Text("Save") } },
         dismissButton = {
-            TextButton(onClick = { if (minutes != null) onSave(null) else onDismiss() }) { Text(if (minutes != null) "Clear" else "Cancel") }
+            TextButton(onClick = { if (minutes != null) onSave(null, null) else onDismiss() }) { Text(if (minutes != null) "Clear" else "Cancel") }
         },
     )
 }
@@ -270,7 +284,12 @@ private fun HealthSessions(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        Text("${session.minutes} min", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("${session.minutes} min", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                            session.stats?.label()?.takeIf { it.isNotEmpty() }?.let {
+                                Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
                     }
                 }
             }

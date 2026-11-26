@@ -14,10 +14,13 @@ class HealthPrivacyActivity : Activity() {
             textSize = 16f
             setPadding(pad, pad * 2, pad, pad)
             text = "Gym and Health Connect\n\n" +
-                "Gym reads your exercise sessions (for example an elliptical session from your Fitbit) only " +
-                "when you set the minutes for a cardio move in a workout, so you can pick one instead of typing.\n\n" +
-                "Only the minutes you choose are saved in your workout, which your training partner can see. " +
-                "Nothing else from Health Connect is stored, uploaded or shared.\n\n" +
+                "Gym reads your exercise sessions (for example an elliptical session from your Fitbit), and the " +
+                "calories and heart rate during them, only when you set the minutes for a cardio move in a " +
+                "workout, so you can pick a session instead of typing.\n\n" +
+                "On a finished workout you can also add the calories and heart rate (average and maximum) for " +
+                "your whole visit.\n\n" +
+                "Only the minutes, calories and heart rate figures you choose are saved in your workout, which " +
+                "your training partner can see. Nothing else from Health Connect is stored, uploaded or shared.\n\n" +
                 "You can remove Gym's access at any time in Health Connect."
         }
         setContentView(ScrollView(this).apply { addView(text) })

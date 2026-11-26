@@ -465,6 +465,13 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
         task { repo.updateWorkout(pid, workout.id) { (if (warmUp) "warmUp" else "mobility").to(Circuit.serializer(), circuit) } }
     }
 
+    /** Saves my watch's calories and heart rate for the whole workout. */
+    fun saveWorkoutHealth(workout: Workout, stats: HealthStats) {
+        val pid = currentPid
+        val me = uid
+        task { repo.updateWorkout(pid, workout.id) { "health.$me".to(HealthStats.serializer(), stats.copy(uid = me)) } }
+    }
+
     fun renameWorkout(workout: Workout, name: String) {
         val clean = name.trim().take(40)
         if (clean.isEmpty() || clean == workout.name) return

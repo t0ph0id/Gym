@@ -68,10 +68,22 @@ interface AppPlatform {
      * for permission if it isn't granted yet. null = not allowed (or not available).
      */
     suspend fun healthSessions(from: Long, to: Long, ask: Boolean): List<HealthSession>? = null
+
+    /** Calories and heart rate between [from] and [to] (whatever was allowed), or null if not allowed. */
+    suspend fun healthStats(from: Long, to: Long): HealthStats? = null
 }
 
-/** One exercise session from the phone's health data, e.g. 12 minutes on the elliptical. */
-data class HealthSession(val title: String, val start: Long, val end: Long, val source: String?) {
+/**
+ * One exercise session from the phone's health data, e.g. 12 minutes on the elliptical, with its
+ * calories and heart rate when allowed.
+ */
+data class HealthSession(
+    val title: String,
+    val start: Long,
+    val end: Long,
+    val source: String?,
+    val stats: HealthStats? = null,
+) {
     /** Rounded to the nearest minute, at least 1. */
     val minutes: Int get() = ((end - start + 30_000) / 60_000).toInt().coerceAtLeast(1)
 }
@@ -141,4 +153,14 @@ fun friendlyError(e: Throwable): String {
             "Can't reach the server. Check your connection and try again."
         else -> "Something went wrong. Please try again."
     }
+}
+
+/**
+ * The time of a whole gym visit for its calories and heart rate: the workout, stretched to cover
+ * any watch sessions that overlap it (give or take [margin]), e.g. a warm-up recorded on the watch
+ * before the workout was started in the app.
+ */
+fun visitRange(start: Long, end: Long, sessions: List<HealthSession>, margin: Long = 30 * 60_000L): LongRange {
+    val near = sessions.filter { it.end > start - margin && it.start < end + margin }
+    return minOf(start, near.minOfOrNull { it.start } ?: start)..maxOf(end, near.maxOfOrNull { it.end } ?: end)
 }

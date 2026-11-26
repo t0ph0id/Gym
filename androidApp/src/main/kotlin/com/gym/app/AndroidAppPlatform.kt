@@ -21,7 +21,13 @@ import androidx.core.content.FileProvider
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.aggregate.AggregateMetric
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.request.AggregateRequest
+import kotlin.math.roundToInt
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import java.time.Instant
@@ -38,6 +44,10 @@ class AndroidAppPlatform(private val activity: ComponentActivity) : AppPlatform 
     // ---- Health Connect: exercise sessions (e.g. from a Fitbit) for cardio minutes ----
 
     private val exercisePermission = HealthPermission.getReadPermission(ExerciseSessionRecord::class)
+    private val totalCaloriesPermission = HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class)
+    private val activeCaloriesPermission = HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class)
+    private val heartRatePermission = HealthPermission.getReadPermission(HeartRateRecord::class)
+    private val allHealthPermissions = setOf(exercisePermission, totalCaloriesPermission, activeCaloriesPermission, heartRatePermission)
     private var pendingHealth: CompletableDeferred<Set<String>>? = null
     private val askHealth = activity.registerForActivityResult(PermissionController.createRequestPermissionResultContract()) {
         pendingHealth?.complete(it)
@@ -49,14 +59,16 @@ class AndroidAppPlatform(private val activity: ComponentActivity) : AppPlatform 
     override suspend fun healthSessions(from: Long, to: Long, ask: Boolean): List<HealthSession>? {
         if (!canReadHealth) return null
         val client = HealthConnectClient.getOrCreate(activity)
-        val granted = runCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
-        if (exercisePermission !in granted) {
-            if (!ask) return null
+        var granted = grantedHealth(client)
+        // Asks for whatever's missing (e.g. calories and heart rate, added after exercise sessions).
+        if (ask && !granted.containsAll(allHealthPermissions)) {
             val result = CompletableDeferred<Set<String>>()
             pendingHealth = result
-            askHealth.launch(setOf(exercisePermission))
-            if (exercisePermission !in result.await()) return null
+            askHealth.launch(allHealthPermissions)
+            result.await()
+            granted = grantedHealth(client)
         }
+        if (exercisePermission !in granted) return null
         return runCatching {
             client.readRecords(
                 ReadRecordsRequest(ExerciseSessionRecord::class, TimeRangeFilter.between(Instant.ofEpochMilli(from), Instant.ofEpochMilli(to))),
@@ -66,9 +78,41 @@ class AndroidAppPlatform(private val activity: ComponentActivity) : AppPlatform 
                     start = r.startTime.toEpochMilli(),
                     end = r.endTime.toEpochMilli(),
                     source = appName(r.metadata.dataOrigin.packageName),
+                    stats = stats(client, granted, r.startTime, r.endTime),
                 )
             }.sortedByDescending { it.start }
         }.getOrElse { emptyList() }
+    }
+
+    override suspend fun healthStats(from: Long, to: Long): HealthStats? {
+        if (!canReadHealth) return null
+        val client = HealthConnectClient.getOrCreate(activity)
+        val granted = grantedHealth(client)
+        if (granted.none { it != exercisePermission && it in allHealthPermissions }) return null
+        return stats(client, granted, Instant.ofEpochMilli(from), Instant.ofEpochMilli(to))
+    }
+
+    private suspend fun grantedHealth(client: HealthConnectClient): Set<String> =
+        runCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
+
+    /**
+     * Calories (total, as the watch shows for a session; active if that's all there is) and heart
+     * rate between [from] and [to], for whichever of them is allowed.
+     */
+    private suspend fun stats(client: HealthConnectClient, granted: Set<String>, from: Instant, to: Instant): HealthStats? {
+        val metrics = buildSet<AggregateMetric<*>> {
+            if (totalCaloriesPermission in granted) add(TotalCaloriesBurnedRecord.ENERGY_TOTAL)
+            if (activeCaloriesPermission in granted) add(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL)
+            if (heartRatePermission in granted) { add(HeartRateRecord.BPM_AVG); add(HeartRateRecord.BPM_MAX) }
+        }
+        if (metrics.isEmpty()) return null
+        val result = runCatching { client.aggregate(AggregateRequest(metrics, TimeRangeFilter.between(from, to))) }.getOrNull() ?: return null
+        val energy = result[TotalCaloriesBurnedRecord.ENERGY_TOTAL] ?: result[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]
+        return HealthStats(
+            kcal = energy?.inKilocalories?.roundToInt()?.takeIf { it > 0 },
+            avgBpm = result[HeartRateRecord.BPM_AVG]?.toInt(),
+            maxBpm = result[HeartRateRecord.BPM_MAX]?.toInt(),
+        ).takeUnless { it.isEmpty }
     }
 
     private fun exerciseName(type: Int): String = when (type) {

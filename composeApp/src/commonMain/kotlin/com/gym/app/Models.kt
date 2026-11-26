@@ -84,21 +84,34 @@ data class Circuit(
     val rounds: Int = 1,
     /** Minutes per move, keyed by [exerciseKey] of its name; e.g. "elliptical" -> 10. Mostly cardio. */
     val minutes: Map<String, Int> = emptyMap(),
+    /** Calories and heart rate per move, when its minutes came from a watch session; same keys. */
+    val health: Map<String, HealthStats> = emptyMap(),
 ) {
     val isEmpty: Boolean get() = exercises.isEmpty()
 
     fun minutesFor(name: String): Int? = minutes[exerciseKey(name)]
 
-    /** With [name]'s minutes set, or cleared when null. */
-    fun withMinutes(name: String, value: Int?): Circuit =
-        copy(minutes = if (value == null) minutes - exerciseKey(name) else minutes + (exerciseKey(name) to value))
+    fun healthFor(name: String): HealthStats? = health[exerciseKey(name)]
+
+    /**
+     * With [name]'s minutes set, or cleared when null. Typed minutes drop any watch figures, which
+     * belonged to the old minutes; [stats] gives the new ones (from a watch session).
+     */
+    fun withMinutes(name: String, value: Int?, stats: HealthStats? = null): Circuit {
+        val key = exerciseKey(name)
+        return copy(
+            minutes = if (value == null) minutes - key else minutes + (key to value),
+            health = if (value == null || stats == null || stats.isEmpty) health - key else health + (key to stats),
+        )
+    }
 
     /** Without the move at [index] (and its minutes, unless the same move is in it twice). */
     fun without(index: Int): Circuit {
         val name = exercises.getOrNull(index) ?: return this
         val rest = exercises.filterIndexed { i, _ -> i != index }
         val key = exerciseKey(name)
-        return copy(exercises = rest, minutes = if (rest.any { exerciseKey(it) == key }) minutes else minutes - key)
+        if (rest.any { exerciseKey(it) == key }) return copy(exercises = rest)
+        return copy(exercises = rest, minutes = minutes - key, health = health - key)
     }
 
     /** Minutes over all rounds. */
@@ -151,6 +164,8 @@ data class Workout(
      * A "Just me" workout lists one person; the other can join later.
      */
     val people: List<String> = emptyList(),
+    /** Calories and heart rate for the whole visit, from each person's watch: uid -> figures. */
+    val health: Map<String, HealthStats> = emptyMap(),
 ) {
     val isSolo: Boolean get() = people.size == 1
 
@@ -158,6 +173,27 @@ data class Workout(
     fun peopleIn(pair: List<String>): List<String> = if (people.isEmpty()) pair else pair.filter { it in people }
 
     fun includes(member: String): Boolean = people.isEmpty() || member in people
+}
+
+/**
+ * Figures from a watch (via Health Connect): calories and heart rate. [uid] is whose watch, since a
+ * shared warm-up can be filled in by either of you.
+ */
+@Serializable
+data class HealthStats(
+    val kcal: Int? = null,
+    val avgBpm: Int? = null,
+    val maxBpm: Int? = null,
+    val uid: String = "",
+) {
+    val isEmpty: Boolean get() = kcal == null && avgBpm == null && maxBpm == null
+
+    /** "48 kcal · avg 132 bpm" (max too with [withMax]) */
+    fun label(withMax: Boolean = false): String = listOfNotNull(
+        kcal?.let { "$it kcal" },
+        avgBpm?.let { "avg $it bpm" },
+        maxBpm?.takeIf { withMax }?.let { "max $it" },
+    ).joinToString(" · ")
 }
 
 @Serializable
