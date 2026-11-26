@@ -180,8 +180,9 @@ internal fun ExerciseCard(
             Spacer(Modifier.height(10.dp))
             val showLastTime = active && members.any { memory.lastTime(it, workout, exercise) != null }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                members.forEachIndexed { i, member ->
-                    val accent = if (i == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                members.forEach { member ->
+                    // Colour by person (you = primary), so it stays the same on a "Just me" workout.
+                    val accent = if (member == vm.uid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
                     val theirs = sets.filter { it.uid == member }.sortedBy { it.order }
                     // focusGroup: the keyboard's Next walks down this person's sets before the other column.
                     Column(Modifier.weight(1f).focusGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {

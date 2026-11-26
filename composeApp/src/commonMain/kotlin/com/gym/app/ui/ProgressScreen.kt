@@ -336,12 +336,12 @@ fun WorkoutSummary(vm: GymViewModel, workout: Workout, sets: List<WorkoutSet>, m
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
             )
-            members.forEachIndexed { i, m ->
+            members.forEach { m ->
                 val theirs = sets.filter { it.uid == m }
-                if (theirs.isEmpty()) return@forEachIndexed // e.g. they hadn't joined the pair yet
+                if (theirs.isEmpty()) return@forEach // e.g. they hadn't joined the pair yet
                 val counted = theirs.filter { it.done } // only ticked sets were actually done
                 val volume = counted.sumOf { (it.weight ?: 0.0) * (it.reps ?: 0) }
-                val accent = if (i == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                val accent = if (m == vm.uid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
                 Text(
                     "${vm.nameOf(m)}: ${setsLabel(counted.size)} · ${formatVolume(volume)}",
                     style = MaterialTheme.typography.bodyMedium,

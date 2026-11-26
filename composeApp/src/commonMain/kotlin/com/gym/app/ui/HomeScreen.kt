@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
@@ -91,20 +92,13 @@ fun HomeScreen(vm: GymViewModel) {
     var query by rememberSaveable { mutableStateOf("") }
     var gymFilter by rememberSaveable { mutableStateOf<String?>(null) }
     val gyms by vm.gyms.list.collectAsState()
-    // Plan to start once a gym is chosen; Unit wrapper so "quick workout" (null plan) can be pending too.
-    // A start waiting for "Where are you training?": the gym to preselect, and what to do with the choice.
-    var pendingStart by remember { mutableStateOf<Pair<String, (String) -> Unit>?>(null) }
-    fun start(plan: Plan?) {
-        if (gyms.size > 1) pendingStart = vm.homeGymId() to { gymId -> vm.startWorkout(plan, gymId) }
-        else vm.startWorkout(plan)
-    }
-    fun repeat(w: Workout) {
-        val gymId = w.gymId ?: vm.homeGymId()
-        if (gyms.size > 1) pendingStart = gymId to { chosen -> vm.repeatWorkout(w, chosen) }
-        else vm.repeatWorkout(w, gymId)
-    }
+    val starter = rememberWorkoutStarter(vm)
+    fun start(plan: Plan?) = starter.start(plan)
+    fun repeat(w: Workout) = starter.repeat(w)
 
-    val active = workouts.firstOrNull { it.finishedAt == null }
+    // Only a workout I'm in blocks starting another; my partner's "Just me" one can be joined instead.
+    val active = vm.myActive(workouts)
+    val partnerSolo = if (active == null) vm.partnerSolo(workouts) else null
     val history = workouts.filter { it.finishedAt != null }
 
     Scaffold(
@@ -145,7 +139,20 @@ fun HomeScreen(vm: GymViewModel) {
         ) {
             item { PartnerCard(partnership, vm) }
             if (active != null) {
-                item { ActiveWorkoutCard(active) { vm.navigate(Screen.Workout(active.id)) } }
+                item {
+                    ActiveWorkoutCard(active, if (active.isSolo) "Your workout in progress" else "Workout in progress") {
+                        vm.navigate(Screen.Workout(active.id))
+                    }
+                }
+            }
+            if (partnerSolo != null) {
+                item {
+                    val who = vm.nameOf(partnerSolo.people.first())
+                    ActiveWorkoutCard(partnerSolo, "$who is training", actionLabel = "Join", onAction = {
+                        vm.joinWorkout(partnerSolo)
+                        vm.navigate(Screen.Workout(partnerSolo.id))
+                    }) { vm.navigate(Screen.Workout(partnerSolo.id)) }
+                }
             }
             item {
                 PrimaryTabRow(selectedTabIndex = tab, containerColor = Color.Transparent) {
@@ -232,7 +239,11 @@ fun HomeScreen(vm: GymViewModel) {
                     item { EmptyState("No matches", "Nothing in these workouts matches. Older ones can be loaded below.") }
                 }
                 items(shown, key = { it.id }) { w ->
-                    HistoryCard(w, gymName = vm.gymName(w.gymId).takeIf { gyms.size > 1 }) {
+                    HistoryCard(
+                        w,
+                        gymName = vm.gymName(w.gymId).takeIf { gyms.size > 1 },
+                        soloName = w.people.singleOrNull()?.let { vm.nameOf(it) }?.takeIf { vm.hasPartner() },
+                    ) {
                         vm.navigate(Screen.Workout(w.id))
                     }
                 }
@@ -249,16 +260,7 @@ fun HomeScreen(vm: GymViewModel) {
 
     RecipesDialogs(vm, recipesUi, recipes)
 
-    pendingStart?.let { (preselected, onChosen) ->
-        ChooseGymDialog(
-            gyms = gyms,
-            selectedId = preselected,
-            title = "Where are you training?",
-            confirmLabel = "Start",
-            onDismiss = { pendingStart = null },
-            onChoose = { gymId -> pendingStart = null; onChosen(gymId) },
-        )
-    }
+    starter.Dialogs()
 
 }
 
@@ -329,17 +331,23 @@ fun Avatar(name: String, color: Color, size: Int = 40) {
 }
 
 @Composable
-private fun ActiveWorkoutCard(workout: Workout, onResume: () -> Unit) {
+private fun ActiveWorkoutCard(
+    workout: Workout,
+    label: String,
+    actionLabel: String = "Resume",
+    onAction: (() -> Unit)? = null,
+    onResume: () -> Unit,
+) {
     Card(
         onClick = onResume,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
     ) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Workout in progress", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 Text(workout.name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
-            Button(onClick = onResume) { Text("Resume") }
+            Button(onClick = onAction ?: onResume) { Text(actionLabel) }
         }
     }
 }
@@ -384,7 +392,7 @@ private fun PlanCard(plan: Plan, canStart: Boolean, onStart: () -> Unit, onEdit:
 }
 
 @Composable
-private fun HistoryCard(workout: Workout, gymName: String?, onClick: () -> Unit) {
+private fun HistoryCard(workout: Workout, gymName: String?, soloName: String? = null, onClick: () -> Unit) {
     Card(onClick = onClick, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
@@ -393,6 +401,13 @@ private fun HistoryCard(workout: Workout, gymName: String?, onClick: () -> Unit)
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(workout.name, style = MaterialTheme.typography.titleMedium)
+            if (soloName != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Person, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Just $soloName", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             if (gymName != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Place, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)

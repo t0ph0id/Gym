@@ -150,6 +150,20 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
         return listOf(uid) + others
     }
 
+    /** The people in [workout] (me first): both of us, or just one for a "Just me" workout. */
+    fun members(workout: Workout): List<String> = workout.peopleIn(members())
+
+    fun hasPartner(): Boolean = members().size > 1
+
+    /** Who [solo] leaves in a new workout: just me, or empty = both of us. */
+    private fun peopleFor(solo: Boolean): List<String> = if (solo && hasPartner()) listOf(uid) else emptyList()
+
+    /** The running workout I'm in (my own "Just me" one, or one we're doing together). */
+    fun myActive(workouts: List<Workout>): Workout? = workouts.firstOrNull { it.finishedAt == null && it.includes(uid) }
+
+    /** My partner's running "Just me" workout, which I could join. */
+    fun partnerSolo(workouts: List<Workout>): Workout? = workouts.firstOrNull { it.finishedAt == null && !it.includes(uid) }
+
     fun nameOf(memberUid: String): String =
         partnership.value?.names?.get(memberUid)?.takeIf { it.isNotBlank() }
             ?: if (memberUid == uid) "You" else "Partner"
@@ -250,7 +264,7 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
      * Writes go through Firestore's local cache, so we navigate straight away; the suspend call only
      * returns once the server confirms (which may be much later in a gym basement).
      */
-    fun startWorkout(plan: Plan?, gymId: String = homeGymId()) {
+    fun startWorkout(plan: Plan?, gymId: String = homeGymId(), solo: Boolean = false) {
         val pid = currentPid
         val workout = Workout(
             id = newId(),
@@ -267,20 +281,21 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
             startedAt = nowMillis(),
             warmUp = plan?.warmUp ?: Circuit(),
             mobility = plan?.mobility ?: Circuit(),
+            people = peopleFor(solo),
         )
         justStarted = workout.id
-        val members = members()
+        val members = members(workout)
         val sets = workout.exercises.flatMap { newSets(workout, it, members) }
         task { repo.saveWorkoutAndSets(pid, workout, sets) }
         navigate(Screen.Workout(workout.id))
     }
 
     /** Starts a new workout with the same exercises as [source] (e.g. "repeat last workout"). */
-    fun repeatWorkout(source: Workout, gymId: String = source.gymId ?: homeGymId()) {
+    fun repeatWorkout(source: Workout, gymId: String = source.gymId ?: homeGymId(), solo: Boolean = false) {
         val pid = currentPid
-        val workout = repeatOf(source, newId(), gymId, gyms.byId(gymId), nowMillis(), ::newId)
+        val workout = repeatOf(source, newId(), gymId, gyms.byId(gymId), nowMillis(), peopleFor(solo), ::newId)
         justStarted = workout.id
-        val members = members()
+        val members = members(workout)
         val sets = workout.exercises.flatMap { newSets(workout, it, members) }
         task { repo.saveWorkoutAndSets(pid, workout, sets) }
         stack.clear(); stack.add(Screen.Home)
@@ -336,9 +351,22 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
             WorkoutExercise(id = newId(), name = it.trim(), targetSets = defaultSets(), targetReps = defaultReps())
         }
         val updated = workout.copy(exercises = workout.exercises + exercises)
-        val members = members()
+        val members = members(workout)
         val sets = exercises.flatMap { newSets(updated, it, members) }
         task { repo.addExercisesToWorkout(pid, workout.id, exercises, sets) }
+    }
+
+    /**
+     * Adds [member] to a "Just me" workout (joining your partner's, or adding them to yours), with
+     * sets for every exercise pre-filled from their remembered weights. Afterwards it's a workout
+     * for both of you.
+     */
+    fun joinWorkout(workout: Workout, member: String = uid) {
+        if (workout.includes(member)) return
+        val pid = currentPid
+        val updated = workout.copy(people = emptyList())
+        val sets = workout.exercises.flatMap { newSets(updated, it, listOf(member)) }
+        task { repo.updateWorkout(pid, workout.id, sets = sets) { "people" to emptyList<String>() } }
     }
 
     /** Changes where the whole workout happened. Exercises with their own gym keep it. */

@@ -64,6 +64,9 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import com.gym.app.GymViewModel
 import com.gym.app.Loading
 import com.gym.app.LocalAppPlatform
@@ -82,8 +85,12 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
     val found by remember(workoutId) { vm.workout(workoutId) }.collectAsState(null)
     val sets by remember(workoutId) { vm.sets(workoutId) }.collectAsState(emptyList())
     val partnership by vm.partnership.collectAsState()
-    val members = remember(partnership) { vm.members() }
     val workout = found?.value
+    // The people in this workout: both of you, or one for a "Just me" workout.
+    val members = remember(partnership, workout?.people) { workout?.let { vm.members(it) } ?: vm.members() }
+    // My partner, when they're not in this workout (mine on my own, or theirs I haven't joined).
+    val outsider = remember(partnership, workout?.people) { vm.members().drop(1).firstOrNull { workout?.includes(it) == false } }
+    val starter = rememberWorkoutStarter(vm)
     val active = workout?.finishedAt == null
 
     var confirmFinish by remember { mutableStateOf(false) }
@@ -141,6 +148,11 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                                     leadingIcon = { Icon(Icons.Default.Edit, null) },
                                     onClick = { menuOpen = false; renaming = true },
                                 )
+                                if (active && outsider != null && workout.includes(vm.uid)) DropdownMenuItem(
+                                    text = { Text("Add ${vm.nameOf(outsider)}") },
+                                    leadingIcon = { Icon(Icons.Default.PersonAdd, null) },
+                                    onClick = { menuOpen = false; vm.joinWorkout(workout, outsider) },
+                                )
                                 if (!active) DropdownMenuItem(
                                     text = { Text("Repeat this workout") },
                                     leadingIcon = { Icon(Icons.Default.Replay, null) },
@@ -196,6 +208,12 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                         }
                     }
                 }
+                if (active && !workout.includes(vm.uid)) {
+                    // Your partner's "Just me" workout: you can watch, or join in.
+                    item {
+                        JoinBanner(vm.nameOf(workout.people.first())) { vm.joinWorkout(workout) }
+                    }
+                }
                 if (!active) {
                     item { WorkoutSummary(vm, workout, sets, members) }
                 }
@@ -246,7 +264,7 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
             text = {
                 Text(
                     "$done of ${sets.size} sets ticked off. Only ticked sets count towards your history, " +
-                        "charts and remembered weights. This finishes it for both of you."
+                        "charts and remembered weights." + if (members.size > 1) " This finishes it for both of you." else ""
                 )
             },
             confirmButton = { TextButton(onClick = { confirmFinish = false; vm.finishWorkout(workout, sets) }) { Text("Finish") } },
@@ -266,7 +284,7 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
     }
     if (repeating && workout != null) {
         when {
-            workouts.any { it.finishedAt == null } -> {
+            vm.myActive(workouts) != null -> {
                 AlertDialog(
                     onDismissRequest = { repeating = false },
                     title = { Text("A workout is already running") },
@@ -274,17 +292,10 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                     confirmButton = { TextButton(onClick = { repeating = false }) { Text("OK") } },
                 )
             }
-            gyms.size > 1 -> ChooseGymDialog(
-                gyms = gyms,
-                selectedId = workout.gymId ?: vm.homeGymId(),
-                title = "Where are you training?",
-                confirmLabel = "Start",
-                onDismiss = { repeating = false },
-                onChoose = { gymId -> repeating = false; vm.repeatWorkout(workout, gymId) },
-            )
-            else -> LaunchedEffect(Unit) { repeating = false; vm.repeatWorkout(workout) }
+            else -> LaunchedEffect(Unit) { repeating = false; starter.repeat(workout) }
         }
     }
+    starter.Dialogs()
     if (renaming && workout != null) {
         // Current name pre-selected and focused, so you can just type the new one.
         var name by remember { mutableStateOf(TextFieldValue(workout.name, TextRange(0, workout.name.length))) }
@@ -330,6 +341,23 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                 vm.addExercises(workout, names)
             },
         )
+    }
+}
+
+/** On your partner's "Just me" workout: join in, which adds your sets to every exercise. */
+@Composable
+private fun JoinBanner(name: String, onJoin: () -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "$name is training on their own. Join to add your sets.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(8.dp))
+            Button(onClick = onJoin) { Text("Join") }
+        }
     }
 }
 

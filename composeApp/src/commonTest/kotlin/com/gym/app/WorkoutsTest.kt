@@ -88,3 +88,35 @@ class FirestoreShapeTest {
     }
 
 }
+
+class JustMeTest {
+    private val pair = listOf("me", "partner")
+
+    @Test
+    fun oldWorkoutsWithNoPeopleAreForBoth() {
+        val w = Workout(id = "w")
+        assertEquals(pair, w.peopleIn(pair))
+        assertEquals(true, w.includes("partner"))
+        assertEquals(false, w.isSolo)
+    }
+
+    @Test
+    fun justMeWorkoutHasOnlyThatPerson() {
+        val mine = Workout(id = "w", people = listOf("me"))
+        assertEquals(listOf("me"), mine.peopleIn(pair))
+        assertEquals(false, mine.includes("partner"))
+        // My partner's own workout, seen from my phone.
+        val theirs = Workout(id = "v", people = listOf("partner"))
+        assertEquals(listOf("partner"), theirs.peopleIn(pair))
+        assertEquals(false, theirs.includes("me"))
+    }
+
+    @Test
+    fun repeatKeepsWhoChoseToTrain() {
+        var n = 0
+        val source = Workout(id = "w", name = "Legs", exercises = listOf(WorkoutExercise("e", "Squat")))
+        val solo = repeatOf(source, "new", "home", null, 1L, listOf("me")) { "id${n++}" }
+        assertEquals(listOf("me"), solo.people)
+        assertEquals(emptyList(), repeatOf(source, "new2", "home", null, 1L) { "id${n++}" }.people)
+    }
+}

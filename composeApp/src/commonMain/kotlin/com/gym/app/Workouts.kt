@@ -3,9 +3,17 @@ package com.gym.app
 /**
  * A fresh copy of [source] to do again: same name and exercises (with their machine brand and
  * isometric type), new ids, nothing ticked. Brands the chosen gym doesn't have are dropped, and
- * per-exercise "done at another gym" isn't carried over.
+ * per-exercise "done at another gym" isn't carried over. [people] = who's training this time (empty = both).
  */
-fun repeatOf(source: Workout, newWorkoutId: String, gymId: String, gym: GymLocation?, now: Long, newId: () -> String): Workout =
+fun repeatOf(
+    source: Workout,
+    newWorkoutId: String,
+    gymId: String,
+    gym: GymLocation?,
+    now: Long,
+    people: List<String> = emptyList(),
+    newId: () -> String,
+): Workout =
     Workout(
         id = newWorkoutId,
         planId = source.planId,
@@ -21,4 +29,5 @@ fun repeatOf(source: Workout, newWorkoutId: String, gymId: String, gym: GymLocat
         startedAt = now,
         warmUp = source.warmUp,
         mobility = source.mobility,
+        people = people,
     )

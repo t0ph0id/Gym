@@ -127,7 +127,19 @@ data class Workout(
     /** Copied from the plan when the workout starts. */
     val warmUp: Circuit = Circuit(),
     val mobility: Circuit = Circuit(),
-)
+    /**
+     * Who's training in it. Empty = both partners (every workout from before "Just me" existed).
+     * A "Just me" workout lists one person; the other can join later.
+     */
+    val people: List<String> = emptyList(),
+) {
+    val isSolo: Boolean get() = people.size == 1
+
+    /** [pair] (me first) narrowed to the people in this workout, keeping the order. */
+    fun peopleIn(pair: List<String>): List<String> = if (people.isEmpty()) pair else pair.filter { it in people }
+
+    fun includes(member: String): Boolean = people.isEmpty() || member in people
+}
 
 @Serializable
 data class WorkoutSet(
