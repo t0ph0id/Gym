@@ -18,6 +18,7 @@ enum class Equipment(val label: String) {
     Dumbbell("Dumbbell"),
     Kettlebell("Kettlebell"),
     Machine("Machine"),
+    Smith("Smith machine"),
     Cable("Cable"),
     Bodyweight("Bodyweight"),
     Other("Other"),
@@ -83,6 +84,9 @@ object Catalog {
             ex("Pec deck", Equipment.Machine, "Butterfly")
             ex("Push-up", Equipment.Bodyweight, "Pushups")
             ex("Dips", Equipment.Bodyweight, "Dips_-_Chest_Version")
+            ex("Smith bench press", Equipment.Smith, "Smith_Machine_Bench_Press")
+            ex("Smith incline bench press", Equipment.Smith, "Smith_Machine_Incline_Bench_Press")
+            ex("Smith decline bench press", Equipment.Smith, "Smith_Machine_Decline_Press")
         }
         group(Muscle.Back) {
             ex("Deadlift", Equipment.Barbell, "Barbell_Deadlift")
@@ -101,6 +105,8 @@ object Catalog {
             ex("Straight-arm pulldown", Equipment.Cable, "Straight-Arm_Pulldown")
             ex("Face pull", Equipment.Cable, "Face_Pull")
             ex("Back extension", Equipment.Bodyweight, "Hyperextensions_Back_Extensions")
+            ex("Smith bent-over row", Equipment.Smith, "Smith_Machine_Bent_Over_Row")
+            ex("Smith inverted row", Equipment.Smith)
         }
         group(Muscle.Shoulders) {
             ex("Overhead press", Equipment.Barbell, "Standing_Military_Press")
@@ -118,6 +124,10 @@ object Catalog {
             ex("Cable lateral raise", Equipment.Cable, "Cable_Seated_Lateral_Raise")
             ex("Shoulder press machine", Equipment.Machine, "Machine_Shoulder_Military_Press")
             ex("Reverse pec deck", Equipment.Machine, "Reverse_Machine_Flyes")
+            ex("Smith shoulder press", Equipment.Smith, "Smith_Machine_Overhead_Shoulder_Press")
+            ex("Smith upright row", Equipment.Smith, "Smith_Machine_Upright_Row")
+            ex("Smith shrug", Equipment.Smith)
+            ex("Smith behind-the-back shrug", Equipment.Smith, "Smith_Machine_Behind_the_Back_Shrug")
         }
         group(Muscle.Biceps) {
             ex("Barbell curl", Equipment.Barbell, "Barbell_Curl")
@@ -138,6 +148,7 @@ object Catalog {
             ex("Kettlebell overhead extension", Equipment.Kettlebell, "Kettlebell_Overhead_Triceps_Extension")
             ex("Triceps kickback", Equipment.Dumbbell, "Tricep_Dumbbell_Kickback")
             ex("Bench dip", Equipment.Bodyweight, "Bench_Dips")
+            ex("Smith close-grip bench press", Equipment.Smith, "Smith_Machine_Close-Grip_Bench_Press")
         }
         group(Muscle.Legs) {
             ex("Back squat", Equipment.Barbell, "Barbell_Squat")
@@ -157,6 +168,11 @@ object Catalog {
             ex("Seated leg curl", Equipment.Machine, "Seated_Leg_Curl")
             ex("Standing calf raise", Equipment.Machine, "Standing_Calf_Raises")
             ex("Seated calf raise", Equipment.Machine, "Seated_Calf_Raise")
+            ex("Smith squat", Equipment.Smith, "Smith_Machine_Squat")
+            ex("Smith split squat", Equipment.Smith, "Smith_Single-Leg_Split_Squat")
+            ex("Smith reverse lunge", Equipment.Smith)
+            ex("Smith stiff-legged deadlift", Equipment.Smith, "Smith_Machine_Stiff-Legged_Deadlift")
+            ex("Smith calf raise", Equipment.Smith, "Smith_Machine_Calf_Raise")
         }
         group(Muscle.Glutes) {
             ex("Hip thrust", Equipment.Barbell, "Barbell_Hip_Thrust")
@@ -167,6 +183,7 @@ object Catalog {
             ex("Cable kickback", Equipment.Cable, "One-Legged_Cable_Kickback")
             ex("Hip abduction machine", Equipment.Machine, "Thigh_Abductor")
             ex("Hip adduction machine", Equipment.Machine, "Thigh_Adductor")
+            ex("Smith hip thrust", Equipment.Smith)
         }
         group(Muscle.Core) {
             ex("Plank", Equipment.Bodyweight, "Plank")
