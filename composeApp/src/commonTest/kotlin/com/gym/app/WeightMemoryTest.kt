@@ -268,4 +268,53 @@ class WeightMemoryTest {
     fun summaryHandlesBodyweightAndMissingReps() {
         assertEquals("12 reps · 20×8 · 30 kg", Performance(listOf(SetRecord(null, 12), SetRecord(20.0, 8), SetRecord(30.0, null))).summary())
     }
+
+    // ---- fixing a finished workout ----
+
+    @Test
+    fun refinishFixesChartsBestsAndLastTime() {
+        // Finished at 100 with a typo: 800 kg instead of 80.
+        val w = workout(ex()).copy(finishedAt = 100)
+        val typo = listOf(set(0, 800.0, done = true))
+        val fixed = listOf(set(0, 80.0, done = true))
+        val key = weightKeys("Leg press", home, null).first()
+        val before = memory(chris to LastWeights(
+            weights = mapOf(key to 800.0),
+            last = mapOf(key to Performance(listOf(SetRecord(800.0, 10)), 100)),
+            best = mapOf(key to 800.0),
+        ))
+        val earlier = ProgressPoint(id = "w0_chris_ex1", workoutId = "w0", uid = chris, exercise = "Leg press", setupKey = key, at = 50, topWeight = 70.0)
+        val stale = before.finish(w, typo, 100).progress.single()
+        val r = before.refinish(w, fixed, listOf(earlier, stale))
+        assertEquals(80.0, r.upserts.single().topWeight)
+        assertEquals(100L, r.upserts.single().at)
+        assertTrue(r.deleteIds.isEmpty())
+        val mem = r.memory.getValue(chris)
+        assertEquals(80.0, mem.weights[key])
+        assertEquals(80.0, mem.best[key])
+        assertEquals(listOf(SetRecord(80.0, 10)), mem.last[key]!!.sets)
+        assertEquals(listOf("Leg press"), r.prs[chris]) // 80 beats the earlier 70
+    }
+
+    @Test
+    fun refinishLeavesNewerWorkoutsAlone() {
+        val w = workout(ex()).copy(finishedAt = 100)
+        val key = weightKeys("Leg press", home, null).first()
+        val newer = Performance(listOf(SetRecord(90.0, 10)), 200)
+        val r = memory(chris to LastWeights(weights = mapOf(key to 90.0), last = mapOf(key to newer)))
+            .refinish(w, listOf(set(0, 80.0, done = true)), emptyList())
+        val mem = r.memory.getValue(chris) // only the best changes
+        assertEquals(90.0, mem.weights[key])
+        assertEquals(newer, mem.last[key])
+        assertEquals(80.0, mem.best[key])
+    }
+
+    @Test
+    fun refinishDropsRecordsOfUntickedSets() {
+        val w = workout(ex()).copy(finishedAt = 100)
+        val old = ProgressPoint(id = "w1_chris_ex1", workoutId = "w1", uid = chris, setupKey = "leg press@home", at = 100, topWeight = 80.0)
+        val r = memory().refinish(w, listOf(set(0, 80.0, done = false)), listOf(old))
+        assertTrue(r.upserts.isEmpty())
+        assertEquals(listOf("w1_chris_ex1"), r.deleteIds)
+    }
 }

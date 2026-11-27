@@ -72,6 +72,9 @@ import com.gym.app.Loading
 import com.gym.app.LocalAppPlatform
 import com.gym.app.Screen
 import com.gym.app.Workout
+import com.gym.app.WorkoutSet
+import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.flow.first
 import com.gym.app.exerciseKey
 import com.gym.app.formatDateTime
 import com.gym.app.nowMillis
@@ -112,6 +115,15 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
     DisposableEffect(active, workout != null) {
         platform.keepScreenOn(active && workout != null)
         onDispose { platform.keepScreenOn(false) }
+    }
+    // Corrections to a finished workout: when you leave it, its charts, bests and remembered weights
+    // are worked out again if any sets or exercises changed since it was opened.
+    var opened by remember(workoutId) { mutableStateOf<Any?>(null) }
+    LaunchedEffect(workoutId) { opened = fingerprint(vm.workout(workoutId).first().value, vm.sets(workoutId).first()) }
+    val latest by rememberUpdatedState(fingerprint(workout, sets))
+    val wasFinished by rememberUpdatedState(workout?.finishedAt != null)
+    DisposableEffect(workoutId) {
+        onDispose { if (wasFinished && opened != null && latest != opened) vm.refreshFinished(workoutId) }
     }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -223,12 +235,8 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                 }
                 if (!workout.warmUp.isEmpty) {
                     item(key = "warmUp") {
-                        if (active) {
-                            CircuitEditor("Warm-up", "No moves left.", workout.warmUp, onChange = { vm.updateCircuit(workout, true, it) }, healthWindow = healthWindow, healthUid = vm.uid) {
-                                addingCircuit = true
-                            }
-                        } else {
-                            CircuitCard("Warm-up", workout.warmUp)
+                        CircuitEditor("Warm-up", "No moves left.", workout.warmUp, onChange = { vm.updateCircuit(workout, true, it) }, healthWindow = healthWindow, healthUid = vm.uid) {
+                            addingCircuit = true
                         }
                     }
                 }
@@ -261,7 +269,7 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                             Text("Add exercise")
                         }
                         // Sections the plan didn't have can still be added while training.
-                        if (active && (workout.warmUp.isEmpty || workout.mobility.isEmpty)) {
+                        if (workout.warmUp.isEmpty || workout.mobility.isEmpty) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (workout.warmUp.isEmpty) {
                                     OutlinedButton(onClick = { addingCircuit = true }, modifier = Modifier.weight(1f)) {
@@ -283,12 +291,8 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                 }
                 if (!workout.mobility.isEmpty) {
                     item(key = "mobility") {
-                        if (active) {
-                            CircuitEditor("Cool-down", "No moves left.", workout.mobility, onChange = { vm.updateCircuit(workout, false, it) }, healthWindow = healthWindow, healthUid = vm.uid) {
-                                addingCircuit = false
-                            }
-                        } else {
-                            CircuitCard("Cool-down", workout.mobility)
+                        CircuitEditor("Cool-down", "No moves left.", workout.mobility, onChange = { vm.updateCircuit(workout, false, it) }, healthWindow = healthWindow, healthUid = vm.uid) {
+                            addingCircuit = false
                         }
                     }
                 }
@@ -457,4 +461,10 @@ private fun RestBar(endsAt: Long, onAdjust: (Int) -> Unit, onSkip: () -> Unit) {
             }
         }
     }
+}
+
+/** What a finished workout's charts and bests depend on, to tell whether it was corrected. */
+private fun fingerprint(workout: Workout?, sets: List<WorkoutSet>): Any? = workout?.let { w ->
+    w.exercises.map { listOf(it.id, it.name, it.gymId, it.brand, it.isometric) } to
+        sets.map { listOf(it.id, it.exerciseId, it.uid, it.order, it.weight, it.reps, it.done) }.sortedBy { it[0] as String }
 }

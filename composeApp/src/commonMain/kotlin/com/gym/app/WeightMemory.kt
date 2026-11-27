@@ -163,6 +163,90 @@ class WeightMemory(
             val existing = byMember[member] ?: LastWeights()
             member to existing.copy(weights = existing.weights + weightUpdates, last = existing.last + lastUpdates)
         }.toMap()
+
+    /** What fixing a finished workout writes: memory per person, progress to save and to delete, bests. */
+    data class RefinishResult(
+        val memory: Map<String, LastWeights>,
+        val upserts: List<ProgressPoint>,
+        val deleteIds: List<String>,
+        val prs: Map<String, List<String>>,
+    )
+
+    /**
+     * Works out again what finishing [workout] wrote, after its sets were corrected: its progress
+     * records, its personal bests (against the [allProgress] records from before it), each setup's best
+     * ever, and "Last time" plus the pre-filled weight, but those only where this workout is still the
+     * most recent one with that setup (fixing an old workout doesn't overwrite newer numbers).
+     */
+    fun refinish(workout: Workout, sets: List<WorkoutSet>, allProgress: List<ProgressPoint>): RefinishResult {
+        val at = workout.finishedAt ?: return RefinishResult(emptyMap(), emptyList(), emptyList(), workout.prs)
+        val points = progressPoints(workout, sets, at)
+        val others = allProgress.filter { it.workoutId != workout.id }
+        val old = allProgress.filter { it.workoutId == workout.id }
+        val deleteIds = old.map { it.id }.filter { id -> points.none { it.id == id } }
+
+        val prs = mutableMapOf<String, MutableList<String>>()
+        for (p in points) {
+            val top = p.topWeight ?: continue
+            val previous = others.filter { it.uid == p.uid && it.setupKey == p.setupKey && it.at < at }.mapNotNull { it.topWeight }.maxOrNull()
+            if (previous != null && top > previous) prs.getOrPut(p.uid) { mutableListOf() } += p.exercise
+        }
+
+        val memory = mutableMapOf<String, LastWeights>()
+        for (member in (sets.map { it.uid } + old.map { it.uid }).distinct()) {
+            val existing = byMember[member] ?: LastWeights()
+            var best = existing.best
+            for (setupKey in (points + old).filter { it.uid == member }.map { it.setupKey }.distinct()) {
+                val top = (others.filter { it.uid == member && it.setupKey == setupKey } + points.filter { it.uid == member && it.setupKey == setupKey })
+                    .mapNotNull { it.topWeight }.maxOrNull()
+                best = if (top == null) best - setupKey else best + (setupKey to top)
+            }
+            val weights = existing.weights.toMutableMap()
+            val last = existing.last.toMutableMap()
+            for (ex in workout.exercises) {
+                if (exerciseKey(ex.name).isEmpty()) continue
+                val counted = sets.filter { it.uid == member && it.exerciseId == ex.id && it.done }.sortedBy { it.order }
+                if (counted.isEmpty()) continue
+                for (key in weightKeys(ex.name, gymOf(workout, ex), ex.brand, ex.isometric)) {
+                    val newer = (last[key]?.at ?: Long.MIN_VALUE) > at
+                    if (newer) continue
+                    last[key] = Performance(counted.map { SetRecord(it.weight, it.reps) }, at)
+                    counted.lastOrNull { it.weight != null }?.weight?.let { weights[key] = it }
+                }
+            }
+            val updated = existing.copy(weights = weights, last = last, best = best)
+            if (updated != existing) memory[member] = updated
+        }
+        return RefinishResult(memory, points, deleteIds, prs)
+    }
+
+    /** One [ProgressPoint] per person per exercise with ticked sets. */
+    private fun progressPoints(workout: Workout, sets: List<WorkoutSet>, at: Long): List<ProgressPoint> =
+        sets.map { it.uid }.distinct().flatMap { member ->
+            workout.exercises.mapNotNull { ex ->
+                if (exerciseKey(ex.name).isEmpty()) return@mapNotNull null
+                val counted = sets.filter { it.uid == member && it.exerciseId == ex.id && it.done }
+                if (counted.isEmpty()) return@mapNotNull null
+                val gymId = gymOf(workout, ex)
+                val top = counted.maxWithOrNull(compareBy<WorkoutSet>({ it.weight ?: -1.0 }, { it.reps ?: -1 }))
+                ProgressPoint(
+                    id = "${workout.id}_${member}_${ex.id}",
+                    workoutId = workout.id,
+                    uid = member,
+                    exercise = ex.name,
+                    exerciseKey = exerciseKey(ex.name),
+                    setupKey = weightKeys(ex.name, gymId, ex.brand, ex.isometric).first(),
+                    gymId = gymId,
+                    brand = ex.brand,
+                    isometric = ex.isometric,
+                    at = at,
+                    topWeight = top?.weight,
+                    topReps = top?.reps,
+                    volume = counted.sumOf { (it.weight ?: 0.0) * (it.reps ?: 0) },
+                    sets = counted.size,
+                )
+            }
+        }
 }
 
 /** "80×10 · 80×10 · 85×8" (bodyweight sets show just the reps). */

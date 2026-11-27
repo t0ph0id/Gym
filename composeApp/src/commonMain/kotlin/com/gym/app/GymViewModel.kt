@@ -441,6 +441,24 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
         back()
     }
 
+    /**
+     * After a finished workout was corrected (sets, exercises): works out its charts, personal bests,
+     * "Last time" and pre-filled weights again, and saves whatever changed.
+     */
+    fun refreshFinished(workoutId: String) {
+        val pid = currentPid
+        task {
+            val workout = repo.getWorkout(pid, workoutId)?.takeIf { it.finishedAt != null } ?: return@task
+            val sets = repo.getSets(pid, workoutId)
+            val all = repo.getProgress(pid)
+            val r = memory.value.refinish(workout, sets, all)
+            val oldPoints = all.filter { it.workoutId == workoutId }.associateBy { it.id }
+            val upserts = r.upserts.filter { oldPoints[it.id] != it }
+            if (upserts.isEmpty() && r.deleteIds.isEmpty() && r.memory.isEmpty() && r.prs == workout.prs) return@task
+            repo.refinishWorkout(pid, workoutId, r.prs, r.memory, upserts, r.deleteIds)
+        }
+    }
+
     /** All progress records for the pair (oldest first), for the Progress tab and charts. */
     // Only listened to while the Progress tab or a chart is on screen (it grows with every workout).
     val progress: StateFlow<List<ProgressPoint>> =

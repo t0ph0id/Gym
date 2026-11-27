@@ -113,26 +113,6 @@ fun CircuitEditor(
     }
 }
 
-/** A finished workout's Warm-up or Cool-down: the moves, each with its photo, how-to and minutes. */
-@Composable
-fun CircuitCard(title: String, circuit: Circuit) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                if (circuit.rounds > 1) {
-                    Text(
-                        "${circuit.rounds} rounds",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-            circuit.exercises.forEach { CircuitRow(it, circuit.minutesFor(it), circuit.healthFor(it), null, onMinutes = null) {} }
-        }
-    }
-}
-
 /**
  * One move: photo (tap for how-to), name and minutes, plus any [actions] on the right. With
  * [onMinutes], cardio moves get a button to set their minutes.

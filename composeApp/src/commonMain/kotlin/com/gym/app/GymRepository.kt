@@ -370,6 +370,29 @@ class GymRepository {
         batch.commit()
     }
 
+    /** Every progress record of the pair, once (for recalculating a corrected workout). */
+    suspend fun getProgress(pid: String): List<ProgressPoint> =
+        progressRef(pid).get().documents.map { it.data<ProgressPoint>() }
+
+    /** Writes what fixing a finished workout changed (see [WeightMemory.refinish]). */
+    suspend fun refinishWorkout(
+        pid: String,
+        wid: String,
+        prs: Map<String, List<String>>,
+        weightsByUid: Map<String, LastWeights>,
+        upserts: List<ProgressPoint>,
+        deleteIds: List<String>,
+    ) {
+        val batch = db.batch()
+        batch.updateFields(workoutsRef(pid).document(wid)) {
+            "prs".to(MapSerializer(String.serializer(), ListSerializer(String.serializer())), prs)
+        }
+        for ((uid, weights) in weightsByUid) batch.set(lastWeightsRef(pid).document(uid), weights)
+        for (p in upserts) batch.set(progressRef(pid).document(p.id), p)
+        for (id in deleteIds) batch.delete(progressRef(pid).document(id))
+        batch.commit()
+    }
+
     fun progress(pid: String): Flow<List<ProgressPoint>> =
         progressRef(pid).snapshots.map { q -> q.documents.map { it.data<ProgressPoint>() }.sortedBy { it.at } }
 
