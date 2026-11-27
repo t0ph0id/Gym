@@ -164,3 +164,29 @@ fun visitRange(start: Long, end: Long, sessions: List<HealthSession>, margin: Lo
     val near = sessions.filter { it.end > start - margin && it.start < end + margin }
     return minOf(start, near.minOfOrNull { it.start } ?: start)..maxOf(end, near.maxOfOrNull { it.end } ?: end)
 }
+
+/** One calorie record from a watch app: [kcal] burned between [start] and [end], written by [origin]. */
+data class EnergySample(val origin: String, val start: Long, val end: Long, val kcal: Double)
+
+/**
+ * Calories burned between [from] and [to], added up from the records themselves (counting only the
+ * part of each record inside the window). Each app's records are added up apart so two apps writing
+ * the same minutes aren't counted twice: [prefer] (the app that recorded the exercise session) when
+ * it has any, otherwise whichever app recorded the most.
+ *
+ * Health Connect's own totals leave out apps missing from its priority list and fill the gap with a
+ * resting estimate (about 1 kcal a minute), which is why they aren't used.
+ */
+fun watchCalories(samples: List<EnergySample>, from: Long, to: Long, prefer: String? = null): Double? {
+    val byOrigin = samples.groupBy { it.origin }.mapValues { (_, list) ->
+        list.sumOf { s ->
+            val overlap = minOf(s.end, to) - maxOf(s.start, from)
+            when {
+                overlap <= 0 -> 0.0
+                s.end <= s.start -> s.kcal
+                else -> s.kcal * overlap / (s.end - s.start)
+            }
+        }
+    }.filterValues { it > 0 }
+    return byOrigin[prefer] ?: byOrigin.values.maxOrNull()
+}

@@ -172,3 +172,25 @@ class HealthFiguresTest {
         assertEquals(10 * min..65 * min, visitRange(10 * min, 65 * min, emptyList()))
     }
 }
+
+class WatchCaloriesTest {
+    private val min = 60_000L
+    private fun perMinute(origin: String, fromMin: Int, toMin: Int, kcal: Double) =
+        (fromMin until toMin).map { EnergySample(origin, it * min, (it + 1) * min, kcal) }
+
+    @Test
+    fun addsUpRecordsInsideTheWindowCountingPartsOfEdgeRecords() {
+        val samples = perMinute("health", 0, 10, 9.0)
+        assertEquals(45.0, watchCalories(samples, 0, 5 * min))
+        assertEquals(9.0, watchCalories(samples, 30_000, 90_000)) // half of two minutes
+        assertEquals(null, watchCalories(samples, 20 * min, 25 * min))
+    }
+
+    @Test
+    fun appsWritingTheSameMinutesArentCountedTwice() {
+        val samples = perMinute("fit", 0, 5, 1.0) + perMinute("health", 0, 5, 9.0)
+        assertEquals(45.0, watchCalories(samples, 0, 5 * min))
+        assertEquals(5.0, watchCalories(samples, 0, 5 * min, prefer = "fit"))
+        assertEquals(45.0, watchCalories(samples, 0, 5 * min, prefer = "strava")) // has none
+    }
+}

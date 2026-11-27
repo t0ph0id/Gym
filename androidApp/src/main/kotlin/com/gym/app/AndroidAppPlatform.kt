@@ -21,13 +21,14 @@ import androidx.core.content.FileProvider
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
-import androidx.health.connect.client.aggregate.AggregateMetric
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.request.AggregateRequest
 import kotlin.math.roundToInt
+import kotlin.reflect.KClass
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import java.time.Instant
@@ -78,7 +79,7 @@ class AndroidAppPlatform(private val activity: ComponentActivity) : AppPlatform 
                     start = r.startTime.toEpochMilli(),
                     end = r.endTime.toEpochMilli(),
                     source = appName(r.metadata.dataOrigin.packageName),
-                    stats = stats(client, granted, r.startTime, r.endTime),
+                    stats = stats(client, granted, r.startTime, r.endTime, prefer = r.metadata.dataOrigin.packageName),
                 )
             }.sortedByDescending { it.start }
         }.getOrElse { emptyList() }
@@ -97,23 +98,59 @@ class AndroidAppPlatform(private val activity: ComponentActivity) : AppPlatform 
 
     /**
      * Calories (total, as the watch shows for a session; active if that's all there is) and heart
-     * rate between [from] and [to], for whichever of them is allowed.
+     * rate between [from] and [to], for whichever of them is allowed. Calories are added up from the
+     * records ([watchCalories]): Health Connect's totals skip apps missing from its priority list.
      */
-    private suspend fun stats(client: HealthConnectClient, granted: Set<String>, from: Instant, to: Instant): HealthStats? {
-        val metrics = buildSet<AggregateMetric<*>> {
-            if (totalCaloriesPermission in granted) add(TotalCaloriesBurnedRecord.ENERGY_TOTAL)
-            if (activeCaloriesPermission in granted) add(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL)
-            if (heartRatePermission in granted) { add(HeartRateRecord.BPM_AVG); add(HeartRateRecord.BPM_MAX) }
+    private suspend fun stats(
+        client: HealthConnectClient,
+        granted: Set<String>,
+        from: Instant,
+        to: Instant,
+        prefer: String? = null,
+    ): HealthStats? {
+        val range = TimeRangeFilter.between(from, to)
+        val (a, b) = from.toEpochMilli() to to.toEpochMilli()
+        var kcal: Double? = null
+        if (totalCaloriesPermission in granted) {
+            kcal = watchCalories(
+                readAll(client, TotalCaloriesBurnedRecord::class, range).map {
+                    EnergySample(it.metadata.dataOrigin.packageName, it.startTime.toEpochMilli(), it.endTime.toEpochMilli(), it.energy.inKilocalories)
+                },
+                a, b, prefer,
+            )
         }
-        if (metrics.isEmpty()) return null
-        val result = runCatching { client.aggregate(AggregateRequest(metrics, TimeRangeFilter.between(from, to))) }.getOrNull() ?: return null
-        val energy = result[TotalCaloriesBurnedRecord.ENERGY_TOTAL] ?: result[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]
+        if (kcal == null && activeCaloriesPermission in granted) {
+            kcal = watchCalories(
+                readAll(client, ActiveCaloriesBurnedRecord::class, range).map {
+                    EnergySample(it.metadata.dataOrigin.packageName, it.startTime.toEpochMilli(), it.endTime.toEpochMilli(), it.energy.inKilocalories)
+                },
+                a, b, prefer,
+            )
+        }
+        val heart = if (heartRatePermission in granted) {
+            runCatching {
+                client.aggregate(AggregateRequest(setOf(HeartRateRecord.BPM_AVG, HeartRateRecord.BPM_MAX), range))
+            }.getOrNull()
+        } else null
         return HealthStats(
-            kcal = energy?.inKilocalories?.roundToInt()?.takeIf { it > 0 },
-            avgBpm = result[HeartRateRecord.BPM_AVG]?.toInt(),
-            maxBpm = result[HeartRateRecord.BPM_MAX]?.toInt(),
+            kcal = kcal?.roundToInt()?.takeIf { it > 0 },
+            avgBpm = heart?.get(HeartRateRecord.BPM_AVG)?.toInt(),
+            maxBpm = heart?.get(HeartRateRecord.BPM_MAX)?.toInt(),
         ).takeUnless { it.isEmpty }
     }
+
+    /** Every record of [type] in [range], over as many pages as it takes. */
+    private suspend fun <T : Record> readAll(client: HealthConnectClient, type: KClass<T>, range: TimeRangeFilter): List<T> =
+        runCatching {
+            val all = mutableListOf<T>()
+            var token: String? = null
+            do {
+                val page = client.readRecords(ReadRecordsRequest(type, range, pageSize = 1000, pageToken = token))
+                all += page.records
+                token = page.pageToken
+            } while (token != null && all.size < 20_000)
+            all
+        }.getOrDefault(emptyList())
 
     private fun exerciseName(type: Int): String = when (type) {
         ExerciseSessionRecord.EXERCISE_TYPE_ELLIPTICAL -> "Elliptical"
