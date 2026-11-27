@@ -99,7 +99,8 @@ fun HomeScreen(vm: GymViewModel) {
     // Only a workout I'm in blocks starting another; my partner's "Just me" one can be joined instead.
     val active = vm.myActive(workouts)
     val partnerSolo = if (active == null) vm.partnerSolo(workouts) else null
-    val history = workouts.filter { it.finishedAt != null }
+    // My partner's finished "Just me" workouts are theirs alone; only ones I was in are in my history.
+    val history = workouts.filter { it.finishedAt != null && it.includes(vm.uid) }
 
     Scaffold(
         topBar = {
@@ -242,7 +243,7 @@ fun HomeScreen(vm: GymViewModel) {
                     HistoryCard(
                         w,
                         gymName = vm.gymName(w.gymId).takeIf { gyms.size > 1 },
-                        soloName = w.people.singleOrNull()?.let { vm.nameOf(it) }?.takeIf { vm.hasPartner() },
+                        solo = w.isSolo && vm.hasPartner(),
                     ) {
                         vm.navigate(Screen.Workout(w.id))
                     }
@@ -392,7 +393,7 @@ private fun PlanCard(plan: Plan, canStart: Boolean, onStart: () -> Unit, onEdit:
 }
 
 @Composable
-private fun HistoryCard(workout: Workout, gymName: String?, soloName: String? = null, onClick: () -> Unit) {
+private fun HistoryCard(workout: Workout, gymName: String?, solo: Boolean = false, onClick: () -> Unit) {
     Card(onClick = onClick, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
@@ -401,11 +402,11 @@ private fun HistoryCard(workout: Workout, gymName: String?, soloName: String? = 
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(workout.name, style = MaterialTheme.typography.titleMedium)
-            if (soloName != null) {
+            if (solo) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Person, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(4.dp))
-                    Text("Just $soloName", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Just me", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (gymName != null) {
