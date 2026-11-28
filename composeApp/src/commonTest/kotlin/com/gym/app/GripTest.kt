@@ -68,3 +68,28 @@ class GripTest {
         assertEquals("Lat pulldown (v-handle, isometric)", exerciseLabel("Lat pulldown", isometric = true, grip = "V-handle"))
     }
 }
+
+class GripAmendTest {
+    private val chris = "chris"
+
+    @Test
+    fun changingAGripAfterFinishingForgetsTheOldGripsNumbers() {
+        val wide = WorkoutExercise("b", "Seated cable row", 3, 10, grip = "Wide grip")
+        val finished = Workout(id = "w", gymId = "home", exercises = listOf(wide), startedAt = 1, finishedAt = 100)
+        val sets = listOf(WorkoutSet(id = "s", exerciseId = "b", uid = chris, order = 0, weight = 15.0, reps = 12, done = true))
+        val atFinish = WeightMemory(emptyMap(), "home").finish(finished, sets, now = 100)
+        // An earlier wide-grip session at 12.5 kg, then this one is changed to V-handle.
+        val earlier = ProgressPoint(id = "old", workoutId = "old", uid = chris, exercise = "Seated cable row", exerciseKey = "seated cable row",
+            gymId = "home", grip = "Wide grip", at = 50, topWeight = 12.5, sets = 3)
+        val amended = finished.copy(exercises = listOf(wide.copy(grip = "V-handle")))
+        val r = WeightMemory(atFinish.memory, "home").refinish(amended, sets, atFinish.progress + earlier)
+        val after = WeightMemory(r.memory, "home")
+        val next = Workout(id = "n", gymId = "home", startedAt = 200)
+        assertEquals(15.0, after.weight(chris, next, wide.copy(grip = "V-handle")))
+        assertEquals(12.5, after.weight(chris, next, wide), "back to the earlier wide-grip session")
+        assertNull(after.lastTime(chris, next, wide))
+        // Without the earlier session, the wide grip is forgotten.
+        val r2 = WeightMemory(atFinish.memory, "home").refinish(amended, sets, atFinish.progress)
+        assertNull(WeightMemory(r2.memory, "home").weight(chris, next, wide))
+    }
+}

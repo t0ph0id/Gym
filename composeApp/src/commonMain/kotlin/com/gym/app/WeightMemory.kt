@@ -221,6 +221,15 @@ class WeightMemory(
             }
             val weights = existing.weights.toMutableMap()
             val last = existing.last.toMutableMap()
+            // Setups this workout wrote at finish but no longer has (its grip, brand or type was changed
+            // afterwards): go back to that setup's previous session, or forget it if there was none.
+            val current = workout.exercises.flatMap { weightKeys(it.name, gymOf(workout, it), it.brand, it.isometric, it.grip) }.toSet()
+            for (key in last.filterValues { it.at == at }.keys - current) {
+                last.remove(key)
+                val before = others.filter { p -> p.uid == member && p.at < at && p.topWeight != null && key in weightKeys(p.exercise, p.gymId, p.brand, p.isometric, p.grip) }
+                    .maxByOrNull { it.at }
+                if (before != null) weights[key] = before.topWeight!! else weights.remove(key)
+            }
             for (ex in workout.exercises) {
                 if (exerciseKey(ex.name).isEmpty()) continue
                 val counted = sets.filter { it.uid == member && it.exerciseId == ex.id && it.done }.sortedBy { it.order }
