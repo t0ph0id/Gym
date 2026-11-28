@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
@@ -89,6 +90,7 @@ fun HomeScreen(vm: GymViewModel) {
     val recipes by vm.recipes.list.collectAsState()
     val recipesUi = rememberRecipesUi()
     var menuOpen by remember { mutableStateOf(false) }
+    var suggesting by remember { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var gymFilter by rememberSaveable { mutableStateOf<String?>(null) }
     val gyms by vm.gyms.list.collectAsState()
@@ -203,6 +205,13 @@ fun HomeScreen(vm: GymViewModel) {
                         }
                     }
                 }
+                item {
+                    OutlinedButton(onClick = { suggesting = true }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.Lightbulb, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Suggest a plan")
+                    }
+                }
                 if (plans.isEmpty()) {
                     item { EmptyState("No plans yet", "Make a training plan with the exercises you both do.") }
                 }
@@ -262,6 +271,7 @@ fun HomeScreen(vm: GymViewModel) {
     RecipesDialogs(vm, recipesUi, recipes)
 
     starter.Dialogs()
+    if (suggesting) SuggestPlanDialog(vm, hasHistory = history.isNotEmpty()) { suggesting = false }
 
 }
 

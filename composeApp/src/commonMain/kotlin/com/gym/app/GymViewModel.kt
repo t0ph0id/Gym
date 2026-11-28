@@ -227,6 +227,33 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
         message.value = "Copied as \"${copy.name}\""
     }
 
+    /**
+     * A plan for the muscles trained least in the last 8 weeks, by me or by both of us ([both]).
+     * Warm-up and cool-down come from the latest workout that had one. Null without any history.
+     */
+    fun planSuggestion(points: List<ProgressPoint>, both: Boolean, variant: Int): PlanSuggestion? {
+        val who = if (both) members() else listOf(uid)
+        val past = workouts.value.filter { it.finishedAt != null && who.all { m -> it.includes(m) } }
+        return suggestPlan(
+            points = points,
+            members = who,
+            now = nowMillis(),
+            own = ownExercises.list.value.map { it.toCatalog() },
+            sets = defaultSets(),
+            reps = defaultReps(),
+            warmUp = past.firstOrNull { !it.warmUp.isEmpty }?.warmUp ?: Circuit(),
+            mobility = past.firstOrNull { !it.mobility.isEmpty }?.mobility ?: Circuit(),
+            variant = variant,
+        )
+    }
+
+    /** Saves a suggested plan to the Plans list (it stays on Home, unlike [savePlan]). */
+    fun saveSuggestedPlan(plan: Plan) {
+        val pid = currentPid
+        task { repo.savePlan(pid, plan.copy(updatedAt = nowMillis())) }
+        message.value = "Saved \"${plan.name}\" to your plans"
+    }
+
     fun deletePlan(planId: String) {
         val pid = currentPid
         task { repo.deletePlan(pid, planId) }
