@@ -433,4 +433,5 @@ internal fun WorkoutExercise.toFirestoreMap(): Map<String, Any?> = mapOf(
     "gymId" to gymId,
     "brand" to brand,
     "isometric" to isometric,
+    "grip" to grip,
 )

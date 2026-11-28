@@ -5,7 +5,7 @@ package com.gym.app
  * which weight to pre-fill, how to re-fill when the gym/brand/type changes, what to remember when
  * a workout is finished, and the "Last time" line.
  *
- * Weights are remembered per exercise + gym + machine brand (+ isometric), see [weightKeys].
+ * Weights are remembered per exercise + gym + machine brand (+ isometric, + grip), see [weightKeys].
  */
 class WeightMemory(
     private val byMember: Map<String, LastWeights>,
@@ -15,20 +15,20 @@ class WeightMemory(
     /** Where this exercise was actually done. */
     fun gymOf(workout: Workout, ex: WorkoutExercise): String = ex.gymId ?: workout.gymId ?: homeGymId
 
-    fun weight(member: String, name: String, gymId: String, brand: String?, isometric: Boolean): Double? {
+    fun weight(member: String, name: String, gymId: String, brand: String?, isometric: Boolean, grip: String? = null): Double? {
         val weights = byMember[member]?.weights ?: return null
-        for (key in weightKeys(name, gymId, brand, isometric)) weights[key]?.let { return it }
-        // Weights saved before gyms existed were all at the home gym (and never isometric).
-        return if (gymId == homeGymId && !isometric) weights[exerciseKey(name)] else null
+        for (key in weightKeys(name, gymId, brand, isometric, grip)) weights[key]?.let { return it }
+        // Weights saved before gyms existed were all at the home gym (and never isometric or with a grip).
+        return if (gymId == homeGymId && !isometric && gripKey(grip) == null) weights[exerciseKey(name)] else null
     }
 
     fun weight(member: String, workout: Workout, ex: WorkoutExercise): Double? =
-        weight(member, ex.name, gymOf(workout, ex), ex.brand, ex.isometric)
+        weight(member, ex.name, gymOf(workout, ex), ex.brand, ex.isometric, ex.grip)
 
     /** What [member] did last time for this exercise in the same setup, if anything. */
     fun lastTime(member: String, workout: Workout, ex: WorkoutExercise): Performance? {
         val last = byMember[member]?.last ?: return null
-        for (key in weightKeys(ex.name, gymOf(workout, ex), ex.brand, ex.isometric)) last[key]?.let { return it }
+        for (key in weightKeys(ex.name, gymOf(workout, ex), ex.brand, ex.isometric, ex.grip)) last[key]?.let { return it }
         return null
     }
 
@@ -54,6 +54,7 @@ class WeightMemory(
      */
     fun note(member: String, workout: Workout, ex: WorkoutExercise): String? {
         val notes = notesByMember[member] ?: return null
+        // Seat and pad settings belong to the machine, so they're shared by every grip.
         for (key in weightKeys(ex.name, gymOf(workout, ex), ex.brand, ex.isometric)) notes[key]?.let { return it }
         return null
     }
@@ -120,7 +121,7 @@ class WeightMemory(
                 val counted = sets.filter { it.uid == member && it.exerciseId == ex.id && it.done }
                 if (counted.isEmpty()) continue
                 val gymId = gymOf(workout, ex)
-                val setupKey = weightKeys(ex.name, gymId, ex.brand, ex.isometric).first()
+                val setupKey = weightKeys(ex.name, gymId, ex.brand, ex.isometric, ex.grip).first()
                 val top = counted.maxWithOrNull(compareBy<WorkoutSet>({ it.weight ?: -1.0 }, { it.reps ?: -1 }))
                 progress += ProgressPoint(
                     id = "${workout.id}_${member}_${ex.id}",
@@ -132,6 +133,7 @@ class WeightMemory(
                     gymId = gymId,
                     brand = ex.brand,
                     isometric = ex.isometric,
+                    grip = ex.grip,
                     at = now,
                     topWeight = top?.weight,
                     topReps = top?.reps,
@@ -164,7 +166,7 @@ class WeightMemory(
                 if (exerciseKey(ex.name).isEmpty()) continue
                 // Only ticked sets count (un-ticked ones still hold pre-filled numbers nobody lifted).
                 val counted = sets.filter { it.uid == member && it.exerciseId == ex.id && it.done }.sortedBy { it.order }
-                val keys = weightKeys(ex.name, gymOf(workout, ex), ex.brand, ex.isometric)
+                val keys = weightKeys(ex.name, gymOf(workout, ex), ex.brand, ex.isometric, ex.grip)
 
                 counted.lastOrNull { it.weight != null }?.weight?.let { w ->
                     keys.forEach { weightUpdates[it] = w }
@@ -223,7 +225,7 @@ class WeightMemory(
                 if (exerciseKey(ex.name).isEmpty()) continue
                 val counted = sets.filter { it.uid == member && it.exerciseId == ex.id && it.done }.sortedBy { it.order }
                 if (counted.isEmpty()) continue
-                for (key in weightKeys(ex.name, gymOf(workout, ex), ex.brand, ex.isometric)) {
+                for (key in weightKeys(ex.name, gymOf(workout, ex), ex.brand, ex.isometric, ex.grip)) {
                     val newer = (last[key]?.at ?: Long.MIN_VALUE) > at
                     if (newer) continue
                     last[key] = Performance(counted.map { SetRecord(it.weight, it.reps) }, at)
@@ -251,10 +253,11 @@ class WeightMemory(
                     uid = member,
                     exercise = ex.name,
                     exerciseKey = exerciseKey(ex.name),
-                    setupKey = weightKeys(ex.name, gymId, ex.brand, ex.isometric).first(),
+                    setupKey = weightKeys(ex.name, gymId, ex.brand, ex.isometric, ex.grip).first(),
                     gymId = gymId,
                     brand = ex.brand,
                     isometric = ex.isometric,
+                    grip = ex.grip,
                     at = at,
                     topWeight = top?.weight,
                     topReps = top?.reps,

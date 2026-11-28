@@ -498,6 +498,6 @@ private fun RestBar(endsAt: Long, onAdjust: (Int) -> Unit, onSkip: () -> Unit) {
 
 /** What a finished workout's charts and bests depend on, to tell whether it was corrected. */
 private fun fingerprint(workout: Workout?, sets: List<WorkoutSet>): Any? = workout?.let { w ->
-    w.exercises.map { listOf(it.id, it.name, it.gymId, it.brand, it.isometric) } to
+    w.exercises.map { listOf(it.id, it.name, it.gymId, it.brand, it.isometric, it.grip) } to
         sets.map { listOf(it.id, it.exerciseId, it.uid, it.order, it.weight, it.reps, it.done) }.sortedBy { it[0] as String }
 }

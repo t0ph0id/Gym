@@ -70,6 +70,7 @@ import androidx.compose.material3.OutlinedTextField
 import com.gym.app.GymLocation
 import com.gym.app.GymViewModel
 import com.gym.app.matches
+import com.gym.app.exerciseLabel
 import com.gym.app.nowMillis
 import com.gym.app.workoutCalendar
 import com.gym.app.Partnership
@@ -374,7 +375,7 @@ private fun PlanCard(plan: Plan, canStart: Boolean, onStart: () -> Unit, onEdit:
             }
             Text(
                 if (plan.exercises.isEmpty()) "No exercises"
-                else "${plan.exercises.size} exercises · " + plan.exercises.joinToString(", ") { if (it.isometric) "${it.name} (isometric)" else it.name },
+                else "${plan.exercises.size} exercises · " + plan.exercises.joinToString(", ") { exerciseLabel(it.name, it.isometric, it.grip) },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
@@ -428,7 +429,7 @@ private fun HistoryCard(workout: Workout, gymName: String?, solo: Boolean = fals
             }
             if (workout.exercises.isNotEmpty()) {
                 Text(
-                    workout.exercises.joinToString(", ") { if (it.isometric) "${it.name} (isometric)" else it.name },
+                    workout.exercises.joinToString(", ") { exerciseLabel(it.name, it.isometric, it.grip) },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

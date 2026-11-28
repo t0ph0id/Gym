@@ -148,7 +148,7 @@ fun ProgressScreen(vm: GymViewModel, exerciseKey: String) {
 
     fun setupLabel(key: String): String {
         val p = points.first { it.setupKey == key }
-        return listOfNotNull(vm.gymName(p.gymId), p.brand, "Isometric".takeIf { p.isometric }).joinToString(" · ")
+        return listOfNotNull(p.grip, vm.gymName(p.gymId), p.brand, "Isometric".takeIf { p.isometric }).joinToString(" · ")
     }
 
     Scaffold(

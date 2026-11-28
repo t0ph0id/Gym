@@ -59,6 +59,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gym.app.Circuit
 import com.gym.app.Equipment
+import com.gym.app.GRIP_SUGGESTIONS
 import com.gym.app.GymViewModel
 import com.gym.app.Plan
 import com.gym.app.PlanExercise
@@ -152,6 +153,7 @@ fun PlanEditorScreen(vm: GymViewModel, planId: String?) {
                     onChange = { exercises[i] = it },
                     onSwap = { swappingIndex = i },
                     onRemove = { exercises.removeAt(i) },
+                    onAnotherGrip = { exercises.add(i + 1, ex.copy(id = newId(), grip = null)) },
                     onMove = { delta -> val j = i + delta; if (j in exercises.indices) exercises.add(j, exercises.removeAt(i)) },
                     canMoveUp = i > 0,
                     canMoveDown = i < exercises.lastIndex,
@@ -248,6 +250,7 @@ private fun ExerciseEditor(
     onChange: (PlanExercise) -> Unit,
     onSwap: () -> Unit,
     onRemove: () -> Unit,
+    onAnotherGrip: () -> Unit,
     onMove: (Int) -> Unit,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
@@ -289,6 +292,11 @@ private fun ExerciseEditor(
                             onClick = { menu = false; onMove(1) },
                         )
                         DropdownMenuItem(
+                            text = { Text("Add another grip") },
+                            leadingIcon = { Icon(Icons.Default.Add, null) },
+                            onClick = { menu = false; onAnotherGrip() },
+                        )
+                        DropdownMenuItem(
                             text = { Text("Remove") },
                             leadingIcon = { Icon(Icons.Default.Close, null) },
                             onClick = { menu = false; onRemove() },
@@ -308,6 +316,18 @@ private fun ExerciseEditor(
                 Text("Type", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FilterChip(!ex.isometric, onClick = { onChange(ex.copy(isometric = false)) }, label = { Text("Normal") })
                 FilterChip(ex.isometric, onClick = { onChange(ex.copy(isometric = true)) }, label = { Text("Isometric") })
+            }
+            // Grip or handle: each one keeps its own weights.
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()).padding(end = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Grip", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                FilterChip(ex.grip == null, onClick = { onChange(ex.copy(grip = null)) }, label = { Text("Any") })
+                (listOfNotNull(ex.grip?.takeIf { g -> GRIP_SUGGESTIONS.none { it.equals(g, true) } }) + GRIP_SUGGESTIONS).forEach { g ->
+                    FilterChip(ex.grip.equals(g, true), onClick = { onChange(ex.copy(grip = g)) }, label = { Text(g) })
+                }
             }
             // Brand matters for machines and cables (or exercises we don't know).
             val machineLike = catalogEntry == null || catalogEntry.equipment == Equipment.Machine ||

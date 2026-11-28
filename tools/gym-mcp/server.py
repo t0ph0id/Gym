@@ -284,6 +284,8 @@ def t_get_workout(args):
             item["brand"] = e["brand"]
         if e.get("isometric"):
             item["isometric"] = True
+        if e.get("grip"):
+            item["grip"] = e["grip"]
         if e.get("gymId"):
             item["gym"] = gyms().get(e["gymId"], e["gymId"])
         item["sets"] = dict(by_ex.get(e.get("id"), {}))
@@ -311,7 +313,7 @@ def t_exercise_history(args):
                 "date": day(p.get("at")),
                 "person": name_of(p.get("uid")),
                 "exercise": p.get("exercise"),
-                "setup": " · ".join(x for x in [g.get(p.get("gymId"), p.get("gymId")), p.get("brand"),
+                "setup": " · ".join(x for x in [p.get("grip"), g.get(p.get("gymId"), p.get("gymId")), p.get("brand"),
                                                   "isometric" if p.get("isometric") else None] if x),
                 "top": f"{p['topWeight']:g}x{p.get('topReps')}" if p.get("topWeight") is not None else f"{p.get('topReps')} reps",
                 "sets": p.get("sets"),

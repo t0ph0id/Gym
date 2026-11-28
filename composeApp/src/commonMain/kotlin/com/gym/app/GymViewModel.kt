@@ -305,6 +305,7 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
                     id = newId(), name = it.name, targetSets = it.sets, targetReps = it.reps,
                     brand = it.brand?.takeIf { b -> gyms.byId(gymId)?.brands?.contains(b) != false },
                     isometric = it.isometric,
+                    grip = it.grip,
                 )
             },
             startedAt = nowMillis(),
@@ -388,6 +389,20 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
     }
 
     /**
+     * Adds [exercise] again right after itself with another [grip] (e.g. a wide-grip round after the
+     * narrow one), same setup otherwise. Its weights are remembered apart, so it starts from that
+     * grip's last weight.
+     */
+    fun addGripVariant(workout: Workout, exercise: WorkoutExercise, grip: String) {
+        val pid = currentPid
+        val copy = exercise.copy(id = newId(), grip = grip.trim().takeIf { it.isNotEmpty() })
+        val at = workout.exercises.indexOfFirst { it.id == exercise.id }.let { if (it < 0) workout.exercises.size else it + 1 }
+        val updated = workout.copy(exercises = workout.exercises.toMutableList().apply { add(at, copy) })
+        val sets = newSets(updated, copy, members(workout))
+        task { repo.updateWorkout(pid, workout.id, sets) { exercises(updated.exercises) } }
+    }
+
+    /**
      * Adds [member] to a "Just me" workout (joining your partner's, or adding them to yours), with
      * sets for every exercise pre-filled from their remembered weights. Afterwards it's a workout
      * for both of you.
@@ -422,8 +437,8 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
     }
 
     /**
-     * Sets one exercise's gym (null = same as the workout), machine brand, and whether it's an
-     * isometric version.
+     * Sets one exercise's gym (null = same as the workout), machine brand, whether it's an
+     * isometric version, and its grip or handle.
      */
     fun changeExerciseSetup(
         workout: Workout,
@@ -432,6 +447,7 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
         gymId: String?,
         brand: String?,
         isometric: Boolean,
+        grip: String?,
     ) {
         val pid = currentPid
         val workoutGym = workout.gymId ?: homeGymId()
@@ -442,6 +458,7 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
                         gymId = gymId?.takeIf { g -> g != workoutGym },
                         brand = brand,
                         isometric = isometric,
+                        grip = grip?.trim()?.takeIf { g -> g.isNotEmpty() },
                     )
                 } else it
             },

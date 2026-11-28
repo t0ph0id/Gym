@@ -72,6 +72,8 @@ data class PlanExercise(
     val brand: String? = null,
     /** Isometric version of the exercise (still logged as weight × reps). */
     val isometric: Boolean = false,
+    /** Grip or handle, e.g. "Wide grip" or "V-handle"; null = not set. Weights are kept per grip. */
+    val grip: String? = null,
 )
 
 /**
@@ -142,6 +144,8 @@ data class WorkoutExercise(
     val brand: String? = null,
     /** Isometric version of the exercise (still logged as weight × reps). */
     val isometric: Boolean = false,
+    /** Grip or handle, e.g. "Wide grip" or "V-handle"; null = not set. Weights are kept per grip. */
+    val grip: String? = null,
 )
 
 @Serializable
@@ -254,6 +258,7 @@ data class ProgressPoint(
     val gymId: String = "",
     val brand: String? = null,
     val isometric: Boolean = false,
+    val grip: String? = null,
     val at: Long = 0,
     val topWeight: Double? = null,
     val topReps: Int? = null,
@@ -279,11 +284,25 @@ fun exerciseKey(name: String) = name.trim().lowercase()
  * Keys under which a working weight is remembered, most specific first: same gym and brand, then
  * same gym. Weights are never carried between gyms, since machines differ.
  */
-fun weightKeys(name: String, gymId: String, brand: String?, isometric: Boolean = false): List<String> {
-    // Isometric versions use different loads from the normal version, so they're remembered apart.
-    val key = exerciseKey(name) + if (isometric) "~iso" else ""
+fun weightKeys(name: String, gymId: String, brand: String?, isometric: Boolean = false, grip: String? = null): List<String> {
+    // Isometric versions and other grips use different loads, so they're remembered apart.
+    val key = exerciseKey(name) + (if (isometric) "~iso" else "") + (gripKey(grip)?.let { "~$it" } ?: "")
     return listOfNotNull(brand?.let { "$key@$gymId@${it.trim().lowercase()}" }, "$key@$gymId")
 }
+
+/** [grip] normalised for keys ("wide grip"), or null when it isn't set. */
+fun gripKey(grip: String?): String? = grip?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
+
+/** "Seated cable row (wide grip, isometric)": the name plus whatever makes it a different version. */
+fun exerciseLabel(name: String, isometric: Boolean = false, grip: String? = null): String {
+    val extra = listOfNotNull(gripKey(grip), "isometric".takeIf { isometric })
+    return if (extra.isEmpty()) name else "$name (${extra.joinToString(", ")})"
+}
+
+/** Grips and handles offered as chips; any other can be typed. */
+val GRIP_SUGGESTIONS = listOf(
+    "Narrow grip", "Wide grip", "Neutral grip", "Underhand", "V-handle", "Rope", "Straight bar", "Single handle",
+)
 
 /** A recipe link the pair shares: the page's preview (title, picture, site) plus your own note and tags. */
 @Serializable

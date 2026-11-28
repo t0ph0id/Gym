@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Check
@@ -51,6 +52,7 @@ import com.gym.app.WeightMemory
 import com.gym.app.Workout
 import com.gym.app.WorkoutExercise
 import com.gym.app.WorkoutSet
+import com.gym.app.exerciseLabel
 import com.gym.app.formatWeight
 import com.gym.app.nowMillis
 import com.gym.app.positionOf
@@ -77,6 +79,7 @@ internal fun ExerciseCard(
     val catalogEntry = findExercise(exercise.name)
     var showDetails by remember { mutableStateOf(false) }
     var editingSetup by remember { mutableStateOf(false) }
+    var addingGrip by remember { mutableStateOf(false) }
     val gyms by vm.gyms.list.collectAsState()
 
     // U2: once every set is ticked, a running workout shows the exercise as one line (tap to open).
@@ -114,6 +117,7 @@ internal fun ExerciseCard(
                         isometric = exercise.isometric,
                         brand = exercise.brand,
                         otherGym = exercise.gymId?.let { vm.gymName(it) },
+                        grip = exercise.grip,
                         onClick = { editingSetup = true },
                     )
                 }
@@ -139,6 +143,11 @@ internal fun ExerciseCard(
                             text = { Text("Move down") },
                             leadingIcon = { Icon(Icons.Default.ArrowDownward, null) },
                             onClick = { cardMenu = false; vm.moveExercise(workout, exercise.id, +1) },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Add another grip") },
+                            leadingIcon = { Icon(Icons.Default.Add, null) },
+                            onClick = { cardMenu = false; addingGrip = true },
                         )
                         DropdownMenuItem(
                             text = { Text("Remove exercise") },
@@ -171,11 +180,17 @@ internal fun ExerciseCard(
                     workoutGymId = workout.gymId ?: vm.homeGymId(),
                     exercise = exercise,
                     onDismiss = { editingSetup = false },
-                    onSave = { gymId, brand, isometric ->
+                    onSave = { gymId, brand, isometric, grip ->
                         editingSetup = false
-                        vm.changeExerciseSetup(workout, sets, exercise.id, gymId, brand, isometric)
+                        vm.changeExerciseSetup(workout, sets, exercise.id, gymId, brand, isometric, grip)
                     },
                 )
+            }
+            if (addingGrip) {
+                AnotherGripDialog(exercise, onDismiss = { addingGrip = false }) { grip ->
+                    addingGrip = false
+                    vm.addGripVariant(workout, exercise, grip)
+                }
             }
             Spacer(Modifier.height(10.dp))
             val showLastTime = active && members.any { memory.lastTime(it, workout, exercise) != null }
@@ -294,7 +309,7 @@ internal fun CollapsedExerciseCard(
             ExerciseThumbnail(catalogEntry, 32.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(exercise.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(exerciseLabel(exercise.name, grip = exercise.grip), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     members.mapNotNull { m ->
                         val theirs = sets.filter { it.uid == m }
