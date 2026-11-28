@@ -80,6 +80,7 @@ class AndroidAppPlatform(private val activity: ComponentActivity) : AppPlatform 
                     end = r.endTime.toEpochMilli(),
                     source = appName(r.metadata.dataOrigin.packageName),
                     stats = stats(client, granted, r.startTime, r.endTime, prefer = r.metadata.dataOrigin.packageName),
+                    cardio = cardioMove(r.exerciseType),
                 )
             }.sortedByDescending { it.start }
         }.getOrElse { emptyList() }
@@ -151,6 +152,16 @@ class AndroidAppPlatform(private val activity: ComponentActivity) : AppPlatform 
             } while (token != null && all.size < 20_000)
             all
         }.getOrDefault(emptyList())
+
+    /** The [MobilityCatalog] cardio move for a gym-machine session type; null for anything else. */
+    private fun cardioMove(type: Int): String? = when (type) {
+        ExerciseSessionRecord.EXERCISE_TYPE_ELLIPTICAL -> "Elliptical"
+        ExerciseSessionRecord.EXERCISE_TYPE_STAIR_CLIMBING_MACHINE -> "Stair climber"
+        ExerciseSessionRecord.EXERCISE_TYPE_BIKING_STATIONARY -> "Exercise bike"
+        ExerciseSessionRecord.EXERCISE_TYPE_ROWING_MACHINE -> "Rowing machine"
+        ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL -> "Treadmill"
+        else -> null
+    }
 
     private fun exerciseName(type: Int): String = when (type) {
         ExerciseSessionRecord.EXERCISE_TYPE_ELLIPTICAL -> "Elliptical"

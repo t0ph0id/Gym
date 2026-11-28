@@ -179,6 +179,14 @@ internal fun ExerciseCard(
             }
             Spacer(Modifier.height(10.dp))
             val showLastTime = active && members.any { memory.lastTime(it, workout, exercise) != null }
+            // Hit every rep last time: offer the next weight up, for the sets still on last time's weight.
+            val tryNext = if (!active) emptyMap() else members.associateWith { member ->
+                val next = memory.suggestion(member, workout, exercise) ?: return@associateWith null
+                val top = memory.lastTime(member, workout, exercise)?.sets?.mapNotNull { it.weight }?.maxOrNull()
+                val open = sets.filter { it.uid == member && !it.done && (it.weight == null || it.weight == top) }
+                if (open.isEmpty()) null else next to open
+            }
+            val showTryNext = tryNext.values.any { it != null }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 members.forEach { member ->
                     // Colour by person (you = primary), so it stays the same on a "Just me" workout.
@@ -195,6 +203,24 @@ internal fun ExerciseCard(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (showTryNext) {
+                            val hint = tryNext[member]
+                            Text(
+                                hint?.let { "↑ Try ${formatWeight(it.first)} kg" } ?: "",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = accent,
+                                maxLines = 1,
+                                modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                                    .then(
+                                        if (hint == null) Modifier
+                                        else Modifier.clickable {
+                                            hint.second.forEach { vm.updateSet(workout.id, it.copy(weight = hint.first)) }
+                                        },
+                                    )
+                                    .padding(vertical = 2.dp),
                             )
                         }
                         // U5: this person's machine settings for this exercise/gym/brand.

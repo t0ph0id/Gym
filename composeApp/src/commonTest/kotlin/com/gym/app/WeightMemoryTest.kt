@@ -317,4 +317,37 @@ class WeightMemoryTest {
         assertTrue(r.upserts.isEmpty())
         assertEquals(listOf("w1_chris_ex1"), r.deleteIds)
     }
+
+    // ---- next weight ----
+
+    private fun lastTime(vararg sets: Pair<Double, Int>) = memory(
+        chris to LastWeights(
+            weights = mapOf("leg press@home" to sets.maxOf { it.first }),
+            last = mapOf("leg press@home" to Performance(sets.map { SetRecord(it.first, it.second) })),
+        ),
+    )
+
+    @Test
+    fun suggestsTheNextWeightWhenEveryTopSetHitTheReps() {
+        val w = workout(ex(sets = 4, reps = 12))
+        // A lighter warm-up set first is fine.
+        assertEquals(42.5, lastTime(20.0 to 10, 40.0 to 12, 40.0 to 12, 40.0 to 12).suggestion(chris, w, w.exercises[0]))
+        assertEquals(42.5, lastTime(40.0 to 12, 40.0 to 13, 40.0 to 12, 40.0 to 12).suggestion(chris, w, w.exercises[0]))
+    }
+
+    @Test
+    fun noSuggestionWhenRepsWereMissedOrTooFewSets() {
+        val w = workout(ex(sets = 4, reps = 12))
+        assertNull(lastTime(40.0 to 12, 40.0 to 12, 40.0 to 10).suggestion(chris, w, w.exercises[0]))
+        assertNull(lastTime(20.0 to 12, 30.0 to 12, 40.0 to 12).suggestion(chris, w, w.exercises[0]))
+        assertNull(memory().suggestion(chris, w, w.exercises[0]))
+    }
+
+    @Test
+    fun stepsUpByTheUsualIncrement() {
+        assertEquals(4.0, nextWeight(3.0))
+        assertEquals(10.0, nextWeight(7.5))
+        assertEquals(32.5, nextWeight(30.0))
+        assertEquals(55.0, nextWeight(50.0))
+    }
 }

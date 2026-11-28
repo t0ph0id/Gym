@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.gym.app.CardioExtra
 import com.gym.app.CatalogExercise
 import com.gym.app.Circuit
 import com.gym.app.HealthSession
@@ -271,6 +272,34 @@ private fun HealthSessions(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Cardio from the watch that isn't in the workout yet ("Stair climber · 10 min · 80 kcal"): add it
+ * to the warm-up or cool-down, or wave it away.
+ */
+@Composable
+internal fun CardioSuggestions(extras: List<CardioExtra>, onAdd: (CardioExtra) -> Unit, onDismiss: (CardioExtra) -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+        Column(Modifier.fillMaxWidth().padding(start = 16.dp, top = 12.dp, bottom = 4.dp, end = 4.dp)) {
+            val source = extras.firstNotNullOfOrNull { it.session.source } ?: "your watch"
+            Text("Cardio from $source", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            extras.forEach { e ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("${e.session.cardio} · ${e.session.minutes} min", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            listOfNotNull(formatTime(e.session.start), e.session.stats?.label()?.takeIf { it.isNotEmpty() }).joinToString(" · "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    TextButton(onClick = { onAdd(e) }) { Text(if (e.warmUp) "Add to warm-up" else "Add to cool-down") }
+                    IconButton(onClick = { onDismiss(e) }) { Icon(Icons.Default.Close, "Not part of this workout", Modifier.size(18.dp)) }
                 }
             }
         }

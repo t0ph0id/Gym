@@ -33,6 +33,22 @@ class WeightMemory(
     }
 
     /**
+     * The next step up for [member], when last time in this setup every set at the top weight hit
+     * the target reps (allowing one lighter warm-up set: at least targetSets - 1 of them); null
+     * otherwise, or when the pre-filled weight has already gone past it.
+     */
+    fun suggestion(member: String, workout: Workout, ex: WorkoutExercise): Double? {
+        val last = lastTime(member, workout, ex) ?: return null
+        val top = last.sets.mapNotNull { it.weight }.maxOrNull()?.takeIf { it > 0 } ?: return null
+        val atTop = last.sets.filter { it.weight == top }
+        if (atTop.size < maxOf(1, ex.targetSets - 1)) return null
+        if (atTop.any { (it.reps ?: 0) < ex.targetReps }) return null
+        val remembered = weight(member, workout, ex)
+        if (remembered != null && remembered > top) return null
+        return nextWeight(top)
+    }
+
+    /**
      * [member]'s machine note ("seat 4") for this exercise in this setup: the brand-specific note if
      * there is one, else the gym-wide one. Notes never carry over between gyms.
      */
@@ -256,4 +272,14 @@ fun Performance.summary(): String = sets.joinToString(" · ") { s ->
         s.weight != null -> "${formatWeight(s.weight)} kg"
         else -> "${s.reps ?: 0} reps"
     }
+}
+
+/**
+ * The usual next step up from [kg]: 1 kg for light dumbbells (whole kilos under 10; 7.5 is a machine
+ * or plate step, so 2.5), 2.5 kg up to 50 kg, then 5 kg.
+ */
+fun nextWeight(kg: Double): Double = kg + when {
+    kg < 10 && kg % 1.0 == 0.0 -> 1.0
+    kg < 50 -> 2.5
+    else -> 5.0
 }

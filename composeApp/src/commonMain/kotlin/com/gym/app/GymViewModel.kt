@@ -8,6 +8,7 @@ import com.gym.app.state.OwnExercises
 import com.gym.app.state.Recipes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.gym.app.state.RestTimer
 import com.gym.app.state.VmContext
@@ -481,6 +482,31 @@ class GymViewModel(private val repo: GymRepository = GymRepository()) : ViewMode
     fun updateCircuit(workout: Workout, warmUp: Boolean, circuit: Circuit) {
         val pid = currentPid
         task { repo.updateWorkout(pid, workout.id) { (if (warmUp) "warmUp" else "mobility").to(Circuit.serializer(), circuit) } }
+    }
+
+    /** Watch sessions I've waved away as not part of a workout (start times), until the app closes. */
+    var dismissedCardio by mutableStateOf(emptySet<Long>())
+
+    /** Fills warm-up/cool-down minutes (and my watch's figures) from matched watch sessions. */
+    fun fillCardio(workout: Workout, fills: List<CardioFill>) {
+        var warmUp = workout.warmUp
+        var coolDown = workout.mobility
+        for (f in fills) {
+            val stats = f.session.stats?.copy(uid = uid)
+            if (f.warmUp) warmUp = warmUp.withMinutes(f.move, f.session.minutes, stats)
+            else coolDown = coolDown.withMinutes(f.move, f.session.minutes, stats)
+        }
+        if (warmUp != workout.warmUp) updateCircuit(workout, true, warmUp)
+        if (coolDown != workout.mobility) updateCircuit(workout, false, coolDown)
+    }
+
+    /** Adds a watch session that had no matching move as a new warm-up or cool-down move. */
+    fun addCardio(workout: Workout, extra: CardioExtra) {
+        val name = extra.session.cardio ?: return
+        val circuit = if (extra.warmUp) workout.warmUp else workout.mobility
+        val added = circuit.copy(exercises = circuit.exercises + name)
+            .withMinutes(name, extra.session.minutes, extra.session.stats?.copy(uid = uid))
+        updateCircuit(workout, extra.warmUp, added)
     }
 
     /** Saves my watch's calories and heart rate for the whole workout. */

@@ -83,6 +83,11 @@ data class HealthSession(
     val end: Long,
     val source: String?,
     val stats: HealthStats? = null,
+    /**
+     * The cardio move it was, named as in [MobilityCatalog] ("Elliptical", "Rowing machine"), from
+     * the watch's exercise type; null for strength sessions, walks, runs and anything else.
+     */
+    val cardio: String? = null,
 ) {
     /** Rounded to the nearest minute, at least 1. */
     val minutes: Int get() = ((end - start + 30_000) / 60_000).toInt().coerceAtLeast(1)

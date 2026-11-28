@@ -77,6 +77,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.flow.first
 import com.gym.app.exerciseKey
 import com.gym.app.formatDateTime
+import com.gym.app.CardioExtra
+import com.gym.app.matchCardio
 import com.gym.app.nowMillis
 import com.gym.app.summary
 import kotlinx.coroutines.delay
@@ -124,6 +126,27 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
     val wasFinished by rememberUpdatedState(workout?.finishedAt != null)
     DisposableEffect(workoutId) {
         onDispose { if (wasFinished && opened != null && latest != opened) vm.refreshFinished(workoutId) }
+    }
+    // Cardio from my watch: fills warm-up/cool-down moves that match by kind and time (now, and every
+    // few minutes while the workout runs, as the watch syncs); unmatched sessions are offered below.
+    var cardioExtras by remember(workoutId) { mutableStateOf(emptyList<CardioExtra>()) }
+    val includesMe = workout?.includes(vm.uid) == true
+    LaunchedEffect(workoutId, includesMe, active) {
+        if (!includesMe || !platform.canReadHealth) return@LaunchedEffect
+        while (true) {
+            val w = vm.workout(workoutId).first().value ?: break
+            val now = nowMillis()
+            // Up to 3 hours before starting it in the app, and 90 minutes after finishing (cool-down).
+            val to = minOf(now, (w.finishedAt ?: now) + 90 * 60_000L)
+            val sessions = platform.healthSessions(w.startedAt - 3 * 60 * 60_000L, to, ask = false)
+            if (sessions != null) {
+                val m = matchCardio(w, vm.sets(workoutId).first(), sessions, now, vm.dismissedCardio)
+                if (m.fills.isNotEmpty()) vm.fillCardio(w, m.fills)
+                cardioExtras = m.extras
+            }
+            if (w.finishedAt != null && now - w.finishedAt > 90 * 60_000L) break
+            delay(3 * 60_000L)
+        }
     }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -199,7 +222,8 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                 // Cardio done up to 3 hours before starting the workout in the app still counts.
                 val healthWindow = (workout.startedAt - 3 * 60 * 60_000L)..(workout.finishedAt ?: Long.MAX_VALUE)
                 // Lazy index of the first exercise card: gym line, summary (finished), warm-up.
-                val firstCard = 1 + (if (!active) 1 else 0) + (if (!workout.warmUp.isEmpty) 1 else 0)
+                val showExtras = cardioExtras.isNotEmpty() && workout.includes(vm.uid)
+                val firstCard = 1 + (if (!active) 1 else 0) + (if (showExtras) 1 else 0) + (if (!workout.warmUp.isEmpty) 1 else 0)
                 LazyColumn(
                 Modifier.fillMaxSize().padding(pad).imePadding(),
                 state = listState,
@@ -232,6 +256,15 @@ fun WorkoutScreen(vm: GymViewModel, workoutId: String) {
                 }
                 if (!active) {
                     item { WorkoutSummary(vm, workout, sets, members) }
+                }
+                if (showExtras) {
+                    item(key = "cardioExtras") {
+                        CardioSuggestions(
+                            cardioExtras,
+                            onAdd = { vm.addCardio(workout, it); cardioExtras = cardioExtras - it },
+                            onDismiss = { vm.dismissedCardio += it.session.start; cardioExtras = cardioExtras - it },
+                        )
+                    }
                 }
                 if (!workout.warmUp.isEmpty) {
                     item(key = "warmUp") {

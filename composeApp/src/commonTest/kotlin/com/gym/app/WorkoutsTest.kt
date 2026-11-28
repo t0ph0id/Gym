@@ -194,3 +194,48 @@ class WatchCaloriesTest {
         assertEquals(45.0, watchCalories(samples, 0, 5 * min, prefer = "strava")) // has none
     }
 }
+
+class CardioMatchTest {
+    private val min = 60_000L
+    private fun session(kind: String?, from: Int, to: Int, kcal: Int = 40) =
+        HealthSession(kind ?: "Strength training", from * min, to * min, "Fitbit", HealthStats(kcal = kcal, avgBpm = 130), cardio = kind)
+    private fun tick(at: Int) = WorkoutSet(id = "s$at", done = true, updatedAt = at * min)
+    private val workout = Workout(
+        startedAt = 0,
+        finishedAt = 70 * min,
+        warmUp = Circuit(listOf("Elliptical", "Rowing machine")),
+        mobility = Circuit(listOf("Stair master")),
+    )
+    private val sets = listOf(tick(15), tick(40), tick(60))
+
+    @Test
+    fun fillsMovesByKindWithWarmUpBeforeTheWeightsAndCoolDownAfter() {
+        val m = matchCardio(
+            workout, sets,
+            listOf(session("Elliptical", -6, -1, 47), session("Rowing machine", 0, 5, 44), session(null, 10, 62), session("Stair climber", 63, 73)),
+            now = 80 * min,
+        )
+        assertEquals(
+            listOf(Triple(true, "Elliptical", 5), Triple(true, "Rowing machine", 5), Triple(false, "Stair master", 10)),
+            m.fills.map { Triple(it.warmUp, it.move, it.session.minutes) },
+        )
+        assertTrue(m.extras.isEmpty())
+    }
+
+    @Test
+    fun movesWithMinutesAreLeftAloneAndUnknownCardioIsOffered() {
+        val done = workout.copy(warmUp = workout.warmUp.withMinutes("Elliptical", 10))
+        val m = matchCardio(done, sets, listOf(session("Elliptical", -6, -1), session("Exercise bike", 62, 70)), now = 80 * min)
+        assertTrue(m.fills.isEmpty())
+        assertEquals(listOf(false to "Exercise bike"), m.extras.map { it.warmUp to it.session.cardio })
+        // Waved away: not offered again.
+        assertTrue(matchCardio(done, sets, listOf(session("Exercise bike", 62, 70)), 80 * min, dismissed = setOf(62 * min)).extras.isEmpty())
+    }
+
+    @Test
+    fun aSessionFillsTheOtherSectionWhenOnlyThatHasTheMove() {
+        // Rowing at the end, but rowing is only in the warm-up.
+        val m = matchCardio(workout, sets, listOf(session("Rowing machine", 62, 67)), now = 80 * min)
+        assertEquals(listOf(true to "Rowing machine"), m.fills.map { it.warmUp to it.move })
+    }
+}
