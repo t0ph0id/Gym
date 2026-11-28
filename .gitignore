@@ -15,3 +15,4 @@ iosApp/iosApp/GoogleService-Info.plist
 xcuserdata/
 iosApp/build/
 *.xcuserstate
+tools/gym-mcp/.venv/
